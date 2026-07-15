@@ -4,9 +4,10 @@ import type { User } from "firebase/auth";
 import Race from "./pages/Race";
 import Home from "./pages/Home";
 import Board from "./pages/Board";
-import { save, load, signIn, signOutUser, watchUser, type Score } from "./lib/fire";
+import Settings from "./pages/Settings";
+import { saveRace, load, getProfileName, signIn, signOutUser, watchUser, type Score } from "./lib/fire";
 
-type Screen = "home" | "wait" | "race" | "result" | "board";
+type Screen = "home" | "wait" | "race" | "result" | "board" | "settings";
 
 const bank = [
     "the quick brown fox jumps over the lazy dog and runs across the field",
@@ -41,6 +42,9 @@ export default function App() {
     const [board, setBoard] = useState<Score[]>([]);
     const [copied, setCopied] = useState(false);
     const [user, setUser] = useState<User | null>(null);
+    const [profileName, setProfileNameState] = useState("");
+    const [youReady, setYouReady] = useState(false);
+    const [rivalReady, setRivalReady] = useState(false);
 
     const room = useRef("");
     const host = useRef(false);
@@ -59,7 +63,15 @@ export default function App() {
     useEffect(() => {
         refresh();
         if (joining) room.current = joining;
-        const unsub = watchUser(setUser);
+        const unsub = watchUser(async next => {
+            setUser(next);
+            if (next) {
+                const existing = await getProfileName(next.uid);
+                setProfileNameState(existing || next.displayName || "");
+            } else {
+                setProfileNameState("");
+            }
+        });
         if (wordRef.current) {
             gsap.fromTo(wordRef.current, { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.7, ease: "steps(6)" });
         }
@@ -74,6 +86,10 @@ export default function App() {
 
     async function refresh() {
         setBoard(await load());
+    }
+
+    function displayName(): string {
+        return user ? (profileName || user.displayName || "racer") : (name || "opponent");
     }
 
     function create() {
@@ -148,7 +164,7 @@ export default function App() {
     function wire() {
         const channel = chan.current!;
         channel.onopen = () => {
-            channel.send(JSON.stringify({ type: "name", name: user?.displayName ?? (name || "opponent") }));
+            channel.send(JSON.stringify({ type: "name", name: displayName() }));
             if (host.current) {
                 const chosen = bank[Math.floor(Math.random() * bank.length)];
                 channel.send(JSON.stringify({ type: "start", text: chosen }));
@@ -158,7 +174,8 @@ export default function App() {
         channel.onmessage = event => {
             const msg = JSON.parse(event.data);
             if (msg.type === "name") setRivalName(msg.name);
-            else if (msg.type === "start" && !host.current) begin(msg.text);
+            else if (msg.type === "start") begin(msg.text);
+            else if (msg.type === "ready") setRivalReady(true);
             else if (msg.type === "progress") setRival(msg.value);
             else if (msg.type === "finish" && !done.current) announce(false, msg.wpm);
         };
@@ -168,14 +185,25 @@ export default function App() {
         passage.current = chosen;
         setText(chosen);
         setScreen("race");
-        start.current = Date.now();
+        start.current = 0;
         done.current = false;
         setTyped("");
         setRival(0);
+        setYouReady(false);
+        setRivalReady(false);
         setTimeout(() => input.current?.focus(), 50);
     }
 
+    function ready() {
+        setYouReady(true);
+        start.current = Date.now();
+        if (chan.current?.readyState === "open") {
+            chan.current.send(JSON.stringify({ type: "ready" }));
+        }
+    }
+
     function type(value: string) {
+        if (!start.current) start.current = Date.now();
         if (value.length < typed.length && value.length < lock(passage.current, typed.length)) return;
 
         setTyped(value);
@@ -200,7 +228,7 @@ export default function App() {
             chan.current.send(JSON.stringify({ type: "finish", wpm }));
         }
         if (user) {
-            save(user.uid, { name: user.displayName ?? name ?? "Racer", wpm, accuracy }).then(refresh);
+            saveRace(user.uid, { wpm, accuracy }).then(refresh);
         }
         announce(true, wpm, accuracy);
     }
@@ -209,6 +237,14 @@ export default function App() {
         done.current = true;
         setScreen("result");
         setVerdict(win ? "you win — " + wpm + "wpm, " + accuracy + "% accuracy" : "rival wins — they hit " + wpm + "wpm first");
+    }
+
+    function rematch() {
+        const chosen = bank[Math.floor(Math.random() * bank.length)];
+        if (chan.current?.readyState === "open") {
+            chan.current.send(JSON.stringify({ type: "start", text: chosen }));
+        }
+        begin(chosen);
     }
 
     function share() {
@@ -229,6 +265,14 @@ export default function App() {
         setScreen("home");
     }
 
+    function openSettings() {
+        setScreen("settings");
+    }
+
+    function closeSettings() {
+        setScreen("home");
+    }
+
     return (
         <div className="min-h-screen bg-[#121110] text-[#F2EEE6]">
             <header className="fixed inset-x-0 top-0 z-20 flex items-center justify-between border-b border-[#2C2A27] bg-[#121110]/90 px-6 py-4 backdrop-blur sm:px-10">
@@ -237,14 +281,19 @@ export default function App() {
                     <span className="ml-0.5 inline-block h-[1em] w-[0.5ch] translate-y-[0.15em] animate-[blink_1s_step-end_infinite] bg-[#D6FF3D]" />
                 </span>
                 <div className="flex items-center gap-5">
-                    {screen !== "race" && screen !== "board" && (
+                    {screen !== "race" && screen !== "board" && screen !== "settings" && (
                         <button onClick={openBoard} className="text-xs font-medium text-[#6F6A5F] transition-colors duration-150 hover:text-[#F2EEE6]">
                             leaderboard
                         </button>
                     )}
+                    {user && screen !== "race" && screen !== "settings" && (
+                        <button onClick={openSettings} className="text-xs font-medium text-[#6F6A5F] transition-colors duration-150 hover:text-[#F2EEE6]">
+                            settings
+                        </button>
+                    )}
                     {user ? (
                         <button onClick={signOutUser} className="text-xs text-[#6F6A5F] transition-colors duration-150 hover:text-[#F2EEE6]">
-                            {user.displayName ?? user.email}
+                            {profileName || user.displayName || user.email}
                         </button>
                     ) : (
                         <button onClick={signIn} className="text-xs font-medium text-[#F2EEE6] transition-colors duration-150 hover:text-[#D6FF3D]">
@@ -258,8 +307,9 @@ export default function App() {
                 {(screen === "home" || screen === "wait" || screen === "result") && (
                     <Home
                         stage={screen}
-                        name={name}
+                        name={user ? (profileName || user.displayName || "") : name}
                         onName={setName}
+                        nameLocked={!!user}
                         joining={joining}
                         onCreate={create}
                         onJoin={join}
@@ -274,9 +324,24 @@ export default function App() {
                     />
                 )}
 
-                {screen === "race" && <Race text={text} typed={typed} rival={rival} rivalName={rivalName} inputRef={input} onType={type} />}
+                {screen === "race" && (
+                    <Race
+                        text={text}
+                        typed={typed}
+                        rival={rival}
+                        rivalName={rivalName}
+                        youReady={youReady}
+                        rivalReady={rivalReady}
+                        inputRef={input}
+                        onType={type}
+                        onReady={ready}
+                        onRematch={rematch}
+                    />
+                )}
 
                 {screen === "board" && <Board board={board} onBack={closeBoard} />}
+
+                {screen === "settings" && user && <Settings user={user} onBack={closeSettings} />}
             </div>
         </div>
     );

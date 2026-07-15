@@ -5,26 +5,26 @@ interface Props {
 }
 
 export default function Leaderboard({ scores }: Props) {
-    const top = [...scores].sort((a, b) => b.wpm - a.wpm).slice(0, 5);
-
     return (
-        <div className="w-full">
-            <span className="mb-3 block text-xs font-medium uppercase tracking-wider text-[#6F6A5F]">top racers</span>
-            {top.length === 0 ? (
-                <p className="border-t border-[#2C2A27] py-4 text-xs text-[#6F6A5F]">no races yet</p>
-            ) : (
-                <ul>
-                    {top.map((score, i) => (
-                        <li key={score.name} className="flex items-center gap-4 border-t border-[#2C2A27] py-2.5 last:border-b">
-                            <span className={"w-4 text-xs " + (i === 0 ? "text-[#D6FF3D]" : "text-[#6F6A5F]")} style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                                {i + 1}
-                            </span>
-                            <span className="flex-1 truncate text-sm text-[#F2EEE6]">{score.name}</span>
-                            <span className="text-sm text-[#F2EEE6]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{score.wpm}wpm</span>
-                            <span className="text-xs text-[#6F6A5F]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{score.accuracy}%</span>
-                        </li>
-                    ))}
-                </ul>
+        <div className="overflow-hidden rounded-2xl border border-[#2C2A27] bg-[#1B1918]">
+            <div className="grid grid-cols-[2rem_1fr_3.5rem_3.5rem_3.5rem] gap-2 border-b border-[#2C2A27] px-4 py-3 text-[10px] font-medium uppercase tracking-wide text-[#6F6A5F]">
+                <span>#</span>
+                <span>name</span>
+                <span className="text-right">wpm</span>
+                <span className="text-right">races</span>
+                <span className="text-right">acc</span>
+            </div>
+            {scores.map((score, i) => (
+                <div key={i} className="grid grid-cols-[2rem_1fr_3.5rem_3.5rem_3.5rem] gap-2 border-b border-[#2C2A27] px-4 py-3 text-sm text-[#F2EEE6] last:border-b-0">
+                    <span className="text-[#6F6A5F]">{i + 1}</span>
+                    <span className="truncate">{score.name || "anon"}</span>
+                    <span className="text-right font-medium text-[#D6FF3D]">{score.wpm}</span>
+                    <span className="text-right text-[#6F6A5F]">{score.races ?? 0}</span>
+                    <span className="text-right text-[#6F6A5F]">{score.accuracy}%</span>
+                </div>
+            ))}
+            {scores.length === 0 && (
+                <div className="px-4 py-6 text-center text-sm text-[#6F6A5F]">no scores yet</div>
             )}
         </div>
     );

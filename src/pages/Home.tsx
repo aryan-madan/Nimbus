@@ -17,6 +17,7 @@ interface Props {
     stage: Stage;
     name: string;
     onName: (value: string) => void;
+    nameLocked: boolean;
     joining: string | null;
     onCreate: () => void;
     onJoin: () => void;
@@ -36,6 +37,7 @@ export default function Home({
     stage,
     name,
     onName,
+    nameLocked,
     joining,
     onCreate,
     onJoin,
@@ -56,7 +58,8 @@ export default function Home({
         if (!board.length) return null;
         const fastest = board.reduce((a, b) => (b.wpm > a.wpm ? b : a));
         const acc = board.reduce((a, b) => (b.accuracy > a.accuracy ? b : a));
-        return { fastest: fastest.wpm + "wpm", acc: acc.accuracy + "%", races: String(board.length) };
+        const totalRaces = board.reduce((sum, b) => sum + (b.races ?? 0), 0);
+        return { fastest: fastest.wpm + "wpm", acc: acc.accuracy + "%", races: String(totalRaces) };
     }, [board]);
 
     function submit() {
@@ -83,9 +86,17 @@ export default function Home({
                                 value={name}
                                 maxLength={16}
                                 onChange={event => onName(event.target.value)}
-                                placeholder="your name"
-                                className="w-full border-b border-[#2C2A27] bg-transparent py-3 text-center text-sm text-[#F2EEE6] placeholder:text-[#6F6A5F] outline-none transition-colors duration-150 focus:border-[#D6FF3D]"
+                                readOnly={nameLocked}
+                                placeholder={nameLocked ? "" : "your name"}
+                                title={nameLocked ? "signed in — change your name in settings" : undefined}
+                                className={
+                                    "w-full border-b border-[#2C2A27] bg-transparent py-3 text-center text-sm text-[#F2EEE6] placeholder:text-[#6F6A5F] outline-none transition-colors duration-150" +
+                                    (nameLocked ? " cursor-default opacity-70" : " focus:border-[#D6FF3D]")
+                                }
                             />
+                            {nameLocked && (
+                                <div className="mt-1.5 text-center text-[10px] text-[#6F6A5F]">signed in as {name || "racer"} · change in settings</div>
+                            )}
                         </div>
 
                         <div data-in className="grid w-full grid-cols-2 gap-3">
