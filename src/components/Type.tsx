@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
+import { colors, mono } from "../lib/theme";
 
 interface Props {
     text: string;
@@ -9,8 +10,8 @@ interface Props {
 
 export default function Type({ text, typed, rival }: Props) {
     const refs = useRef<Record<number, HTMLSpanElement | null>>({});
-    const mineRef = useRef<HTMLSpanElement>(null);
-    const rivalRef = useRef<HTMLSpanElement>(null);
+    const mine = useRef<HTMLSpanElement>(null);
+    const other = useRef<HTMLSpanElement>(null);
 
     const mark = text.length ? Math.min(text.length - 1, Math.round((rival / 100) * text.length)) : 0;
 
@@ -22,27 +23,32 @@ export default function Type({ text, typed, rival }: Props) {
     }
 
     useEffect(() => {
-        const mine = place(typed.length, typed.length >= text.length);
-        if (mineRef.current) gsap.to(mineRef.current, { left: mine.left, top: mine.top, duration: 0.12, ease: "power2.out" });
+        const a = place(typed.length, typed.length >= text.length);
+        if (mine.current) gsap.to(mine.current, { left: a.left, top: a.top, duration: 0.12, ease: "power2.out" });
 
-        const other = place(mark, false);
-        if (rivalRef.current) gsap.to(rivalRef.current, { left: other.left, top: other.top, duration: 0.12, ease: "power2.out" });
+        const b = place(mark, false);
+        if (other.current) gsap.to(other.current, { left: b.left, top: b.top, duration: 0.12, ease: "power2.out" });
     }, [typed, rival, text]);
 
     return (
-        <div className="relative max-w-3xl select-none whitespace-pre-wrap break-words text-xl leading-relaxed sm:text-2xl" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+        <div className="relative max-w-3xl select-none whitespace-pre-wrap break-words text-xl leading-relaxed sm:text-2xl" style={mono}>
             {text.split("").map((char, i) => {
                 const past = i < typed.length;
                 const right = past && typed[i] === char;
                 const wrong = past && typed[i] !== char;
+                const style = right
+                    ? { color: colors.text }
+                    : wrong
+                        ? { backgroundColor: colors.error + "26", color: colors.error }
+                        : { color: "#55514A" };
                 return (
-                    <span key={i} ref={el => { refs.current[i] = el; }} className={right ? "text-[#F2EEE6]" : wrong ? "bg-[#FF5B54]/15 text-[#FF5B54]" : "text-[#55514A]"}>
+                    <span key={i} ref={el => { refs.current[i] = el; }} style={style}>
                         {char}
                     </span>
                 );
             })}
-            <span ref={rivalRef} className="pointer-events-none absolute left-0 top-0 w-[2px] rounded-full bg-[#5D8AFF]" style={{ height: "1.15em" }} />
-            <span ref={mineRef} className="pointer-events-none absolute left-0 top-0 w-[2px] animate-[blink_1s_step-end_infinite] rounded-full bg-[#D6FF3D]" style={{ height: "1.15em" }} />
+            <span ref={other} className="pointer-events-none absolute left-0 top-0 w-[2px] rounded-full" style={{ height: "1.15em", backgroundColor: colors.rival }} />
+            <span ref={mine} className="pointer-events-none absolute left-0 top-0 w-[2px] animate-[blink_1s_step-end_infinite] rounded-full" style={{ height: "1.15em", backgroundColor: colors.accent }} />
         </div>
     );
 }

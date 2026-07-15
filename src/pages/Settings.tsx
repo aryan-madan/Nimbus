@@ -1,88 +1,102 @@
 import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
-import { ArrowLeft, Check } from "lucide-react";
-import { getProfileName, setProfileName } from "../lib/fire";
+import { ArrowLeft } from "lucide-react";
+import { colors, mono } from "../lib/theme";
+import { getProfile, setProfileName } from "../lib/fire";
 import { type User } from "firebase/auth";
 
 interface Props {
     user: User;
-    onBack: () => void;
+    back: () => void;
 }
 
-export default function Settings({ user, onBack }: Props) {
-    const rootRef = useRef<HTMLDivElement>(null);
+export default function Settings({ user, back }: Props) {
+    const root = useRef<HTMLDivElement>(null);
     const [name, setName] = useState("");
-    const [original, setOriginal] = useState("");
-    const [saving, setSaving] = useState(false);
-    const [saved, setSaved] = useState(false);
+    const [saved, setSaved] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [wpm, setWpm] = useState(0);
+    const [acc, setAcc] = useState(0);
+    const [races, setRaces] = useState(0);
 
     useEffect(() => {
-        if (rootRef.current) gsap.fromTo(rootRef.current, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" });
-        getProfileName(user.uid).then(existing => {
-            const value = existing || user.displayName || "";
+        if (root.current) {
+            const items = root.current.querySelectorAll("[data-in]");
+            gsap.fromTo(items, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.45, stagger: 0.06, ease: "power3.out" });
+        }
+        getProfile(user.uid).then(profile => {
+            const value = profile?.name || user.displayName || "";
             setName(value);
-            setOriginal(value);
+            setSaved(value);
+            setWpm(profile?.wpm ?? 0);
+            setAcc(profile?.accuracy ?? 0);
+            setRaces(profile?.races ?? 0);
         });
     }, [user]);
 
-    const dirty = name.trim() !== original.trim() && name.trim().length > 0;
+    const dirty = name.trim() !== saved.trim() && name.trim().length > 0;
 
-    async function handleSave() {
-        setSaving(true);
-        setSaved(false);
+    async function save() {
+        setBusy(true);
         await setProfileName(user.uid, name);
-        setOriginal(name.trim());
-        setSaving(false);
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
+        setSaved(name.trim());
+        setBusy(false);
     }
 
-    const initial = (name || user.email || "?").charAt(0).toUpperCase();
-
     return (
-        <div ref={rootRef} className="flex min-h-screen w-full flex-col items-center px-6 pb-16 pt-32">
-            <div className="w-full max-w-md">
-                <button onClick={onBack} className="mb-8 flex items-center gap-1.5 text-xs font-medium text-[#6F6A5F] transition-colors duration-150 hover:text-[#F2EEE6]">
-                    <ArrowLeft size={13} />
-                    back
-                </button>
-
-                <div className="mb-8 flex items-center gap-4">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#D6FF3D] to-[#5D8AFF] text-lg font-semibold text-[#121110]">
-                        {initial}
-                    </div>
-                    <div className="min-w-0">
-                        <div className="truncate text-sm font-medium text-[#F2EEE6]">{name || "racer"}</div>
-                        <div className="truncate text-xs text-[#6F6A5F]">{user.email}</div>
-                    </div>
+        <div ref={root} className="flex min-h-screen w-full flex-col items-center px-6 pb-16 pt-32">
+            <div className="flex w-full max-w-md flex-col items-center gap-10">
+                <div data-in className="flex w-full items-center">
+                    <button
+                        onClick={back}
+                        className="flex items-center gap-1.5 text-xs font-medium transition-colors duration-150"
+                        style={{ color: colors.muted }}
+                        onMouseEnter={event => (event.currentTarget.style.color = colors.text)}
+                        onMouseLeave={event => (event.currentTarget.style.color = colors.muted)}
+                    >
+                        <ArrowLeft size={13} />
+                        back
+                    </button>
                 </div>
 
-                <div className="rounded-2xl border border-[#2C2A27] bg-[#1B1918] p-6">
-                    <label className="mb-2.5 block text-xs font-medium uppercase tracking-wide text-[#6F6A5F]">display name</label>
+                <div data-in className="flex flex-col items-center gap-2 text-center">
+                    <h1 className="text-2xl font-medium" style={{ color: colors.text }}>settings</h1>
+                    <span className="text-xs" style={{ color: colors.muted }}>{user.email}</span>
+                </div>
+
+                <div data-in className="flex w-full items-center justify-center gap-6 text-xs" style={{ ...mono, color: colors.muted }}>
+                    <span>best <span style={{ color: colors.text }}>{wpm}wpm</span></span>
+                    <span>acc <span style={{ color: colors.text }}>{acc}%</span></span>
+                    <span>races <span style={{ color: colors.text }}>{races}</span></span>
+                </div>
+
+                <div data-in className="w-full">
                     <input
                         value={name}
                         onChange={event => setName(event.target.value.slice(0, 16))}
                         maxLength={16}
                         placeholder="your name"
-                        className="w-full rounded-lg border border-[#2C2A27] bg-[#121110] px-3.5 py-2.5 text-sm text-[#F2EEE6] outline-none transition-colors duration-150 placeholder:text-[#6F6A5F] focus:border-[#D6FF3D]"
+                        className="w-full border-b bg-transparent py-3 text-center text-sm outline-none transition-colors duration-150"
+                        style={{ borderColor: colors.border, color: colors.text }}
+                        onFocus={event => (event.currentTarget.style.borderColor = colors.accent)}
+                        onBlur={event => (event.currentTarget.style.borderColor = colors.border)}
                     />
-                    <div className="mt-2 flex items-center justify-between text-[10px] text-[#6F6A5F]">
-                        <span>this only changes your display name, not your rank</span>
+                    <div className="mt-2 flex items-center justify-center gap-4 text-[10px]" style={{ ...mono, color: colors.muted }}>
                         <span>{name.length}/16</span>
+                        <span>·</span>
+                        <span>changing this won't affect your rank</span>
                     </div>
-                    <button
-                        onClick={handleSave}
-                        disabled={saving || !dirty}
-                        className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-[#D6FF3D] py-2.5 text-sm font-medium text-[#121110] transition-all duration-150 active:scale-[0.98] disabled:opacity-30"
-                    >
-                        {saved ? (
-                            <>
-                                <Check size={15} />
-                                saved
-                            </>
-                        ) : saving ? "saving..." : "save changes"}
-                    </button>
                 </div>
+
+                <button
+                    data-in
+                    onClick={save}
+                    disabled={busy || !dirty}
+                    className="w-full rounded-lg py-3.5 text-sm font-medium transition-opacity duration-150 hover:opacity-90 active:opacity-80 disabled:opacity-30"
+                    style={{ backgroundColor: colors.accent, color: colors.bg }}
+                >
+                    {busy ? "saving..." : dirty ? "save" : "saved"}
+                </button>
             </div>
         </div>
     );

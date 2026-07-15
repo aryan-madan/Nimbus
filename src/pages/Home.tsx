@@ -1,5 +1,6 @@
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import gsap from "gsap";
+import { colors, mono } from "../lib/theme";
 import { type Score } from "../lib/fire";
 
 type Stage = "home" | "wait" | "result";
@@ -16,99 +17,86 @@ function extract(value: string): string {
 interface Props {
     stage: Stage;
     name: string;
-    onName: (value: string) => void;
-    nameLocked: boolean;
+    setName: (value: string) => void;
+    locked: boolean;
     joining: string | null;
-    onCreate: () => void;
-    onJoin: () => void;
-    onJoinByCode: (code: string) => void;
+    create: () => void;
+    join: () => void;
+    joinCode: (code: string) => void;
     link: string;
     copied: boolean;
-    onShare: () => void;
+    share: () => void;
     board: Score[];
     verdict: string;
     verdictRef: RefObject<HTMLHeadingElement | null>;
-    onAgain: () => void;
+    again: () => void;
+    rematch: () => void;
 }
 
-const mono = { fontFamily: "'JetBrains Mono', monospace" };
-
-export default function Home({
-    stage,
-    name,
-    onName,
-    nameLocked,
-    joining,
-    onCreate,
-    onJoin,
-    onJoinByCode,
-    link,
-    copied,
-    onShare,
-    board,
-    verdict,
-    verdictRef,
-    onAgain
-}: Props) {
+export default function Home({ stage, name, setName, locked, joining, create, join, joinCode, link, copied, share, board, verdict, verdictRef, again, rematch }: Props) {
     const [code, setCode] = useState("");
-    const codeRef = useRef<HTMLInputElement>(null);
-    const rootRef = useRef<HTMLDivElement>(null);
+    const codeInput = useRef<HTMLInputElement>(null);
+    const root = useRef<HTMLDivElement>(null);
 
     const stats = useMemo(() => {
         if (!board.length) return null;
         const fastest = board.reduce((a, b) => (b.wpm > a.wpm ? b : a));
         const acc = board.reduce((a, b) => (b.accuracy > a.accuracy ? b : a));
-        const totalRaces = board.reduce((sum, b) => sum + (b.races ?? 0), 0);
-        return { fastest: fastest.wpm + "wpm", acc: acc.accuracy + "%", races: String(totalRaces) };
+        const total = board.reduce((sum, b) => sum + (b.races ?? 0), 0);
+        return { fastest: fastest.wpm + "wpm", acc: acc.accuracy + "%", races: String(total) };
     }, [board]);
 
     function submit() {
-        if (code.trim()) onJoinByCode(extract(code));
+        if (code.trim()) joinCode(extract(code));
     }
 
     useEffect(() => {
-        if (!rootRef.current) return;
-        const items = rootRef.current.querySelectorAll("[data-in]");
+        if (!root.current) return;
+        const items = root.current.querySelectorAll("[data-in]");
         gsap.fromTo(items, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.45, stagger: 0.06, ease: "power3.out" });
     }, [stage]);
 
     return (
-        <div ref={rootRef} className="flex min-h-screen w-full flex-col">
+        <div ref={root} className="flex min-h-screen w-full flex-col">
             <main className="flex flex-1 flex-col items-center justify-center px-6 pb-16 pt-32">
                 {stage === "home" && (
                     <div className="flex w-full max-w-md flex-col items-center gap-10">
                         <div data-in className="flex flex-col items-center gap-2 text-center">
-                            <h1 className="text-2xl font-medium text-[#F2EEE6]">race a friend, same passage, real time</h1>
+                            <h1 className="text-2xl font-medium" style={{ color: colors.text }}>race a friend, same passage, real time</h1>
                         </div>
 
                         <div data-in className="w-full">
                             <input
                                 value={name}
                                 maxLength={16}
-                                onChange={event => onName(event.target.value)}
-                                readOnly={nameLocked}
-                                placeholder={nameLocked ? "" : "your name"}
-                                title={nameLocked ? "signed in — change your name in settings" : undefined}
-                                className={
-                                    "w-full border-b border-[#2C2A27] bg-transparent py-3 text-center text-sm text-[#F2EEE6] placeholder:text-[#6F6A5F] outline-none transition-colors duration-150" +
-                                    (nameLocked ? " cursor-default opacity-70" : " focus:border-[#D6FF3D]")
-                                }
+                                onChange={event => setName(event.target.value)}
+                                readOnly={locked}
+                                placeholder={locked ? "" : "your name"}
+                                title={locked ? "signed in — change your name in settings" : undefined}
+                                className={"w-full border-b bg-transparent py-3 text-center text-sm outline-none transition-colors duration-150" + (locked ? " cursor-default opacity-70" : "")}
+                                style={{ borderColor: colors.border, color: colors.text }}
+                                onFocus={event => !locked && (event.currentTarget.style.borderColor = colors.accent)}
+                                onBlur={event => (event.currentTarget.style.borderColor = colors.border)}
                             />
-                            {nameLocked && (
-                                <div className="mt-1.5 text-center text-[10px] text-[#6F6A5F]">signed in as {name || "racer"} · change in settings</div>
+                            {locked && (
+                                <div className="mt-1.5 text-center text-[10px]" style={{ color: colors.muted }}>signed in as {name || "racer"} · change in settings</div>
                             )}
                         </div>
 
                         <div data-in className="grid w-full grid-cols-2 gap-3">
                             <button
-                                onClick={onCreate}
-                                className="rounded-lg bg-[#D6FF3D] py-3.5 text-sm font-medium text-[#121110] transition-opacity duration-150 hover:opacity-90 active:opacity-80"
+                                onClick={create}
+                                className="rounded-lg py-3.5 text-sm font-medium transition-opacity duration-150 hover:opacity-90 active:opacity-80"
+                                style={{ backgroundColor: colors.accent, color: colors.bg }}
                             >
                                 start race
                             </button>
                             <button
-                                onClick={() => (joining ? onJoin() : codeRef.current?.focus())}
-                                className="rounded-lg border border-[#2C2A27] py-3.5 text-sm font-medium text-[#F2EEE6] transition-colors duration-150 hover:border-[#6F6A5F]"
+                                onClick={() => (joining ? join() : codeInput.current?.focus())}
+                                className="rounded-lg border py-3.5 text-sm font-medium transition-colors duration-150"
+                                style={{ borderColor: colors.border, color: colors.text }}
+                                onMouseEnter={event => (event.currentTarget.style.borderColor = colors.muted)}
+                                onMouseLeave={event => (event.currentTarget.style.borderColor = colors.border)}
                             >
                                 {joining ? "join " + joining : "join race"}
                             </button>
@@ -116,24 +104,32 @@ export default function Home({
 
                         <div data-in className="flex w-full gap-2">
                             <input
-                                ref={codeRef}
+                                ref={codeInput}
                                 value={code}
                                 onChange={event => setCode(event.target.value)}
                                 onKeyDown={event => event.key === "Enter" && submit()}
                                 placeholder="paste link or code"
-                                style={mono}
-                                className="flex-1 border-b border-[#2C2A27] bg-transparent py-2.5 text-xs text-[#F2EEE6] placeholder:text-[#6F6A5F] outline-none transition-colors duration-150 focus:border-[#D6FF3D]"
+                                className="flex-1 border-b bg-transparent py-2.5 text-xs outline-none transition-colors duration-150"
+                                style={{ ...mono, borderColor: colors.border, color: colors.text }}
+                                onFocus={event => (event.currentTarget.style.borderColor = colors.accent)}
+                                onBlur={event => (event.currentTarget.style.borderColor = colors.border)}
                             />
-                            <button onClick={submit} className="text-xs font-medium text-[#6F6A5F] transition-colors duration-150 hover:text-[#F2EEE6]">
+                            <button
+                                onClick={submit}
+                                className="text-xs font-medium transition-colors duration-150"
+                                style={{ color: colors.muted }}
+                                onMouseEnter={event => (event.currentTarget.style.color = colors.text)}
+                                onMouseLeave={event => (event.currentTarget.style.color = colors.muted)}
+                            >
                                 go
                             </button>
                         </div>
 
                         {stats && (
-                            <div data-in className="flex w-full items-center justify-center gap-6 text-xs text-[#6F6A5F]" style={mono}>
-                                <span>fastest <span className="text-[#F2EEE6]">{stats.fastest}</span></span>
-                                <span>best <span className="text-[#F2EEE6]">{stats.acc}</span></span>
-                                <span>races <span className="text-[#F2EEE6]">{stats.races}</span></span>
+                            <div data-in className="flex w-full items-center justify-center gap-6 text-xs" style={{ ...mono, color: colors.muted }}>
+                                <span>fastest <span style={{ color: colors.text }}>{stats.fastest}</span></span>
+                                <span>best <span style={{ color: colors.text }}>{stats.acc}</span></span>
+                                <span>races <span style={{ color: colors.text }}>{stats.races}</span></span>
                             </div>
                         )}
                     </div>
@@ -141,43 +137,55 @@ export default function Home({
 
                 {stage === "wait" && (
                     <div data-in className="flex w-full max-w-md flex-col items-center gap-6 text-center">
-                        <h1 className="text-lg font-medium text-[#F2EEE6]">waiting for your friend</h1>
+                        <h1 className="text-lg font-medium" style={{ color: colors.text }}>waiting for your friend</h1>
                         <div className="flex w-full gap-2">
                             <input
                                 readOnly
                                 value={link}
-                                style={mono}
-                                className="flex-1 truncate rounded-lg border border-[#2C2A27] bg-[#1B1918] px-3 py-2.5 text-xs text-[#6F6A5F]"
+                                className="flex-1 truncate rounded-lg border px-3 py-2.5 text-xs"
+                                style={{ ...mono, borderColor: colors.border, backgroundColor: colors.panel, color: colors.muted }}
                             />
                             <button
-                                onClick={onShare}
-                                className="shrink-0 rounded-lg bg-[#D6FF3D] px-4 text-xs font-medium text-[#121110] transition-opacity duration-150 hover:opacity-90"
+                                onClick={share}
+                                className="shrink-0 rounded-lg px-4 text-xs font-medium transition-opacity duration-150 hover:opacity-90"
+                                style={{ backgroundColor: colors.accent, color: colors.bg }}
                             >
                                 {copied ? "copied" : "copy"}
                             </button>
                         </div>
-                        <span className="inline-block h-4 w-[2px] animate-[blink_1s_step-end_infinite] bg-[#6F6A5F]" />
+                        <span className="inline-block h-4 w-[2px] animate-[blink_1s_step-end_infinite]" style={{ backgroundColor: colors.muted }} />
                     </div>
                 )}
 
                 {stage === "result" && (
                     <div className="flex w-full max-w-md flex-col items-center gap-8">
-                        <h1 ref={verdictRef} className="text-center text-xl font-medium text-[#F2EEE6]" style={mono}>
+                        <h1 ref={verdictRef} className="text-center text-xl font-medium" style={{ ...mono, color: colors.text }}>
                             {verdict}
                         </h1>
-                        <button
-                            data-in
-                            onClick={onAgain}
-                            className="w-full rounded-lg bg-[#D6FF3D] py-3.5 text-sm font-medium text-[#121110] transition-opacity duration-150 hover:opacity-90"
-                        >
-                            race again
-                        </button>
+                        <div data-in className="flex w-full flex-col gap-3">
+                            <button
+                                onClick={rematch}
+                                className="w-full rounded-lg py-3.5 text-sm font-medium transition-opacity duration-150 hover:opacity-90"
+                                style={{ backgroundColor: colors.accent, color: colors.bg }}
+                            >
+                                rematch
+                            </button>
+                            <button
+                                onClick={again}
+                                className="w-full rounded-lg border py-3.5 text-sm font-medium transition-colors duration-150"
+                                style={{ borderColor: colors.border, color: colors.text }}
+                                onMouseEnter={event => (event.currentTarget.style.borderColor = colors.muted)}
+                                onMouseLeave={event => (event.currentTarget.style.borderColor = colors.border)}
+                            >
+                                new opponent
+                            </button>
+                        </div>
                     </div>
                 )}
             </main>
 
-            <footer className="flex items-center justify-center border-t border-[#2C2A27] py-6">
-                <span className="text-xs text-[#6F6A5F]">made with ❤️ by Ary</span>
+            <footer className="flex items-center justify-center border-t py-6" style={{ borderColor: colors.border }}>
+                <span className="text-xs" style={{ color: colors.muted }}>made with ❤️ by Ary</span>
             </footer>
         </div>
     );

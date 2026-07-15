@@ -5,7 +5,8 @@ import Race from "./pages/Race";
 import Home from "./pages/Home";
 import Board from "./pages/Board";
 import Settings from "./pages/Settings";
-import { saveRace, load, getProfileName, signIn, signOutUser, watchUser, type Score } from "./lib/fire";
+import { colors } from "./lib/theme";
+import { saveRace, load, getProfileName, ensureProfile, signIn, signOutUser, watchUser, type Score } from "./lib/fire";
 
 type Screen = "home" | "wait" | "race" | "result" | "board" | "settings";
 
@@ -43,7 +44,7 @@ export default function App() {
     const [copied, setCopied] = useState(false);
     const [user, setUser] = useState<User | null>(null);
     const [profileName, setProfileNameState] = useState("");
-    const [youReady, setYouReady] = useState(false);
+    const [ready, setReady] = useState(false);
     const [rivalReady, setRivalReady] = useState(false);
 
     const room = useRef("");
@@ -66,6 +67,7 @@ export default function App() {
         const unsub = watchUser(async next => {
             setUser(next);
             if (next) {
+                await ensureProfile(next.uid, next.displayName ?? "racer");
                 const existing = await getProfileName(next.uid);
                 setProfileNameState(existing || next.displayName || "");
             } else {
@@ -107,7 +109,7 @@ export default function App() {
         connect();
     }
 
-    function joinByCode(value: string) {
+    function joinCode(value: string) {
         room.current = value;
         host.current = false;
         history.replaceState(null, "", "?room=" + value);
@@ -189,13 +191,13 @@ export default function App() {
         done.current = false;
         setTyped("");
         setRival(0);
-        setYouReady(false);
+        setReady(false);
         setRivalReady(false);
         setTimeout(() => input.current?.focus(), 50);
     }
 
-    function ready() {
-        setYouReady(true);
+    function markReady() {
+        setReady(true);
         if (chan.current?.readyState === "open") {
             chan.current.send(JSON.stringify({ type: "ready" }));
         }
@@ -231,7 +233,9 @@ export default function App() {
             chan.current.send(JSON.stringify({ type: "finish", wpm }));
         }
         if (user) {
-            saveRace(user.uid, { wpm, accuracy }).then(refresh);
+            saveRace(user.uid, { wpm, accuracy })
+                .then(refresh)
+                .catch(err => console.error("saveRace failed", err));
         }
         announce(true, wpm, accuracy);
     }
@@ -277,29 +281,53 @@ export default function App() {
     }
 
     return (
-        <div className="min-h-screen bg-[#121110] text-[#F2EEE6]">
-            <header className="fixed inset-x-0 top-0 z-20 flex items-center justify-between border-b border-[#2C2A27] bg-[#121110]/90 px-6 py-4 backdrop-blur sm:px-10">
-                <span className="flex items-center text-base font-medium text-[#F2EEE6]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+        <div className="min-h-screen" style={{ backgroundColor: colors.bg, color: colors.text }}>
+            <header className="fixed inset-x-0 top-0 z-20 flex items-center justify-between border-b px-6 py-4 backdrop-blur sm:px-10" style={{ borderColor: colors.border, backgroundColor: colors.bg + "E6" }}>
+                <span className="flex items-center text-base font-medium" style={{ fontFamily: "'JetBrains Mono', monospace", color: colors.text }}>
                     <span ref={wordRef} style={{ display: "inline-block" }}>nimbus</span>
-                    <span className="ml-0.5 inline-block h-[1em] w-[0.5ch] translate-y-[0.15em] animate-[blink_1s_step-end_infinite] bg-[#D6FF3D]" />
+                    <span className="ml-0.5 inline-block h-[1em] w-[0.5ch] translate-y-[0.15em] animate-[blink_1s_step-end_infinite]" style={{ backgroundColor: colors.accent }} />
                 </span>
                 <div className="flex items-center gap-5">
                     {screen !== "race" && screen !== "board" && screen !== "settings" && (
-                        <button onClick={openBoard} className="text-xs font-medium text-[#6F6A5F] transition-colors duration-150 hover:text-[#F2EEE6]">
+                        <button
+                            onClick={openBoard}
+                            className="text-xs font-medium transition-colors duration-150"
+                            style={{ color: colors.muted }}
+                            onMouseEnter={event => (event.currentTarget.style.color = colors.text)}
+                            onMouseLeave={event => (event.currentTarget.style.color = colors.muted)}
+                        >
                             leaderboard
                         </button>
                     )}
                     {user && screen !== "race" && screen !== "settings" && (
-                        <button onClick={openSettings} className="text-xs font-medium text-[#6F6A5F] transition-colors duration-150 hover:text-[#F2EEE6]">
+                        <button
+                            onClick={openSettings}
+                            className="text-xs font-medium transition-colors duration-150"
+                            style={{ color: colors.muted }}
+                            onMouseEnter={event => (event.currentTarget.style.color = colors.text)}
+                            onMouseLeave={event => (event.currentTarget.style.color = colors.muted)}
+                        >
                             settings
                         </button>
                     )}
                     {user ? (
-                        <button onClick={signOutUser} className="text-xs text-[#6F6A5F] transition-colors duration-150 hover:text-[#F2EEE6]">
+                        <button
+                            onClick={signOutUser}
+                            className="text-xs transition-colors duration-150"
+                            style={{ color: colors.muted }}
+                            onMouseEnter={event => (event.currentTarget.style.color = colors.text)}
+                            onMouseLeave={event => (event.currentTarget.style.color = colors.muted)}
+                        >
                             {profileName || user.displayName || user.email}
                         </button>
                     ) : (
-                        <button onClick={signIn} className="text-xs font-medium text-[#F2EEE6] transition-colors duration-150 hover:text-[#D6FF3D]">
+                        <button
+                            onClick={signIn}
+                            className="text-xs font-medium transition-colors duration-150"
+                            style={{ color: colors.text }}
+                            onMouseEnter={event => (event.currentTarget.style.color = colors.accent)}
+                            onMouseLeave={event => (event.currentTarget.style.color = colors.text)}
+                        >
                             sign in
                         </button>
                     )}
@@ -311,19 +339,20 @@ export default function App() {
                     <Home
                         stage={screen}
                         name={user ? (profileName || user.displayName || "") : name}
-                        onName={setName}
-                        nameLocked={!!user}
+                        setName={setName}
+                        locked={!!user}
                         joining={joining}
-                        onCreate={create}
-                        onJoin={join}
-                        onJoinByCode={joinByCode}
+                        create={create}
+                        join={join}
+                        joinCode={joinCode}
                         link={link}
                         copied={copied}
-                        onShare={share}
+                        share={share}
                         board={board}
                         verdict={verdict}
                         verdictRef={verdictRef}
-                        onAgain={again}
+                        again={again}
+                        rematch={rematch}
                     />
                 )}
 
@@ -333,19 +362,19 @@ export default function App() {
                         typed={typed}
                         rival={rival}
                         rivalName={rivalName}
-                        youReady={youReady}
+                        ready={ready}
                         rivalReady={rivalReady}
-                        inputRef={input}
-                        onType={type}
-                        onReady={ready}
-                        onRematch={rematch}
-                        onStart={raceStart}
+                        input={input}
+                        type={type}
+                        onReady={markReady}
+                        rematch={rematch}
+                        start={raceStart}
                     />
                 )}
 
-                {screen === "board" && <Board board={board} onBack={closeBoard} />}
+                {screen === "board" && <Board board={board} back={closeBoard} />}
 
-                {screen === "settings" && user && <Settings user={user} onBack={closeSettings} />}
+                {screen === "settings" && user && <Settings user={user} back={closeSettings} />}
             </div>
         </div>
     );
