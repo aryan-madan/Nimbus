@@ -36,7 +36,7 @@ export default function Type({ text, typed, rival }: Props) {
                 const right = past && typed[i] === char;
                 const wrong = past && typed[i] !== char;
                 return (
-                    <span key={i} ref={el => (refs.current[i] = el)} className={right ? "text-[#F2EEE6]" : wrong ? "bg-[#FF5B54]/15 text-[#FF5B54]" : "text-[#55514A]"}>
+                    <span key={i} ref={el => { refs.current[i] = el; }} className={right ? "text-[#F2EEE6]" : wrong ? "bg-[#FF5B54]/15 text-[#FF5B54]" : "text-[#55514A]"}>
                         {char}
                     </span>
                 );
