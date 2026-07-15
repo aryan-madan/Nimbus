@@ -63,8 +63,18 @@ export default function Leaderboard({ scores }: Props) {
                     >
                         <span style={{ color: colors.muted }}>{i + 1}</span>
                         <span className="truncate">{score.name || "anon"}</span>
-                        <span className="text-right font-medium" style={{ color: colors.accent }}>{score.wpm}</span>
-                        <span className="text-right" style={{ color: colors.muted }}>{score.races ?? 0}</span>
+                        <span
+                            className="text-right"
+                            style={{ color: sort === "wpm" ? colors.accent : colors.muted, fontWeight: sort === "wpm" ? 700 : 500 }}
+                        >
+                            {score.wpm}
+                        </span>
+                        <span
+                            className="text-right"
+                            style={{ color: sort === "races" ? colors.accent : colors.muted, fontWeight: sort === "races" ? 700 : 500 }}
+                        >
+                            {score.races ?? 0}
+                        </span>
                         <span className="text-right" style={{ color: colors.muted }}>{score.accuracy}%</span>
                     </div>
                 ))}

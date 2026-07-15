@@ -19,3 +19,11 @@ body {
         opacity: 0;
     }
 }
+
+button:not(:disabled) {
+    cursor: pointer;
+}
+
+button:disabled {
+    cursor: not-allowed;
+}

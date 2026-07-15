@@ -62,7 +62,7 @@ export default function Home({ stage, name, setName, locked, joining, create, jo
                 {stage === "home" && (
                     <div className="flex w-full max-w-md flex-col items-center gap-10">
                         <div data-in className="flex flex-col items-center gap-2 text-center">
-                            <h1 className="text-2xl font-medium" style={{ color: colors.text }}>race a friend, same passage, real time</h1>
+                            <h1 className="text-2xl font-medium" style={{ color: colors.text }}>multiplayer type type :D</h1>
                         </div>
 
                         <div data-in className="w-full">
