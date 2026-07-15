@@ -196,10 +196,13 @@ export default function App() {
 
     function ready() {
         setYouReady(true);
-        start.current = Date.now();
         if (chan.current?.readyState === "open") {
             chan.current.send(JSON.stringify({ type: "ready" }));
         }
+    }
+
+    function raceStart() {
+        start.current = Date.now();
     }
 
     function type(value: string) {
@@ -336,6 +339,7 @@ export default function App() {
                         onType={type}
                         onReady={ready}
                         onRematch={rematch}
+                        onStart={raceStart}
                     />
                 )}
 

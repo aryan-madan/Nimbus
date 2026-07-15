@@ -39,10 +39,10 @@ service cloud.firestore {
         && request.resource.data.accuracy >= 0
         && request.resource.data.accuracy <= 100
         && (
-          (request.resource.data.races == resource.data.races + 1
+          (request.resource.data.races == (('races' in resource.data) ? resource.data.races : 0) + 1
             && request.resource.data.name == resource.data.name)
           ||
-          (request.resource.data.races == resource.data.races
+          (request.resource.data.races == (('races' in resource.data) ? resource.data.races : 0)
             && request.resource.data.wpm == resource.data.wpm
             && request.resource.data.accuracy == resource.data.accuracy
             && request.resource.data.name == profileName(uid))
