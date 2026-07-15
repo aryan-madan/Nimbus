@@ -3,7 +3,7 @@ import gsap from "gsap";
 import { colors, mono } from "../lib/theme";
 import { type Score } from "../lib/fire";
 
-type Stage = "home" | "wait" | "queue" | "result";
+type Stage = "home" | "wait" | "queue" | "found" | "result";
 
 function extract(value: string): string {
     try {
@@ -12,6 +12,12 @@ function extract(value: string): string {
     } catch {
         return value.trim().toUpperCase();
     }
+}
+
+interface Opponent {
+    uid: string;
+    name: string;
+    elo: number;
 }
 
 interface Props {
@@ -37,11 +43,15 @@ interface Props {
     queueRanked: () => void;
     queueCasual: () => void;
     cancelQueue: () => void;
+    foundOpponent: Opponent | null;
+    foundRanked: boolean;
+    eloDelta: number | null;
 }
 
 export default function Home({
     stage, name, setName, locked, joining, create, join, joinCode, link, copied, share,
-    board, verdict, verdictRef, again, rematch, signedIn, elo, queueMode, queueRanked, queueCasual, cancelQueue
+    board, verdict, verdictRef, again, rematch, signedIn, elo, queueMode, queueRanked, queueCasual, cancelQueue,
+    foundOpponent, foundRanked, eloDelta
 }: Props) {
     const [code, setCode] = useState("");
     const codeInput = useRef<HTMLInputElement>(null);
@@ -183,6 +193,24 @@ export default function Home({
                     </div>
                 )}
 
+                {stage === "found" && (
+                    <div data-in className="flex w-full max-w-md flex-col items-center gap-8 text-center">
+                        <h1 className="text-lg font-medium" style={{ color: colors.text }}>match found</h1>
+                        <div className="flex w-full items-center justify-center gap-6">
+                            <div className="flex flex-1 flex-col items-center gap-1">
+                                <span className="max-w-[8rem] truncate text-sm font-medium" style={{ color: colors.text }}>{name || "you"}</span>
+                                {foundRanked && <span className="text-xs" style={{ ...mono, color: colors.accent }}>{elo}</span>}
+                            </div>
+                            <span className="text-[10px] uppercase tracking-widest" style={{ color: colors.faint }}>vs</span>
+                            <div className="flex flex-1 flex-col items-center gap-1">
+                                <span className="max-w-[8rem] truncate text-sm font-medium" style={{ color: colors.rival }}>{foundOpponent?.name || "opponent"}</span>
+                                {foundRanked && <span className="text-xs" style={{ ...mono, color: colors.rival }}>{foundOpponent?.elo ?? 1200}</span>}
+                            </div>
+                        </div>
+                        <span className="inline-block h-4 w-[2px] animate-[blink_1s_step-end_infinite]" style={{ backgroundColor: colors.muted }} />
+                    </div>
+                )}
+
                 {stage === "wait" && (
                     <div data-in className="flex w-full max-w-md flex-col items-center gap-6 text-center">
                         <h1 className="text-lg font-medium" style={{ color: colors.text }}>waiting for your friend</h1>
@@ -206,10 +234,18 @@ export default function Home({
                 )}
 
                 {stage === "result" && (
-                    <div className="flex w-full max-w-md flex-col items-center gap-8">
+                    <div className="flex w-full max-w-md flex-col items-center gap-6">
                         <h1 ref={verdictRef} className="text-center text-xl font-medium" style={{ ...mono, color: colors.text }}>
                             {verdict}
                         </h1>
+                        {eloDelta !== null && (
+                            <div
+                                className="rounded-full px-4 py-1.5 text-sm font-semibold"
+                                style={{ ...mono, color: eloDelta >= 0 ? colors.accent : colors.error, backgroundColor: (eloDelta >= 0 ? colors.accent : colors.error) + "1A" }}
+                            >
+                                {eloDelta >= 0 ? "+" : ""}{eloDelta} elo
+                            </div>
+                        )}
                         <div data-in className="flex w-full flex-col gap-3">
                             <button
                                 onClick={rematch}
