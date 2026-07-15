@@ -1,0 +1,26 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /board/{doc} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasAll(['name', 'wpm', 'accuracy', 'time'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 16
+        && request.resource.data.wpm is number
+        && request.resource.data.wpm > 0
+        && request.resource.data.wpm < 400
+        && request.resource.data.accuracy is number
+        && request.resource.data.accuracy >= 0
+        && request.resource.data.accuracy <= 100;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
