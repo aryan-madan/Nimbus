@@ -36,6 +36,7 @@ export default function App() {
     const [text, setText] = useState("");
     const [typed, setTyped] = useState("");
     const [rival, setRival] = useState(0);
+    const [rivalName, setRivalName] = useState("");
     const [verdict, setVerdict] = useState("");
     const [board, setBoard] = useState<Score[]>([]);
     const [copied, setCopied] = useState(false);
@@ -99,6 +100,7 @@ export default function App() {
     }
 
     function connect() {
+        setRivalName("");
         sock.current = new WebSocket(worker + "?room=" + room.current);
         const conn = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
         peer.current = conn;
@@ -146,6 +148,7 @@ export default function App() {
     function wire() {
         const channel = chan.current!;
         channel.onopen = () => {
+            channel.send(JSON.stringify({ type: "name", name: user?.displayName ?? (name || "opponent") }));
             if (host.current) {
                 const chosen = bank[Math.floor(Math.random() * bank.length)];
                 channel.send(JSON.stringify({ type: "start", text: chosen }));
@@ -154,7 +157,8 @@ export default function App() {
         };
         channel.onmessage = event => {
             const msg = JSON.parse(event.data);
-            if (msg.type === "start" && !host.current) begin(msg.text);
+            if (msg.type === "name") setRivalName(msg.name);
+            else if (msg.type === "start" && !host.current) begin(msg.text);
             else if (msg.type === "progress") setRival(msg.value);
             else if (msg.type === "finish" && !done.current) announce(false, msg.wpm);
         };
@@ -270,7 +274,7 @@ export default function App() {
                     />
                 )}
 
-                {screen === "race" && <Race text={text} typed={typed} rival={rival} inputRef={input} onType={type} />}
+                {screen === "race" && <Race text={text} typed={typed} rival={rival} rivalName={rivalName} inputRef={input} onType={type} />}
 
                 {screen === "board" && <Board board={board} onBack={closeBoard} />}
             </div>

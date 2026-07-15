@@ -6,11 +6,12 @@ interface Props {
     text: string;
     typed: string;
     rival: number;
+    rivalName: string;
     inputRef: RefObject<HTMLInputElement | null>;
     onType: (value: string) => void;
 }
 
-export default function Race({ text, typed, rival, inputRef, onType }: Props) {
+export default function Race({ text, typed, rival, rivalName, inputRef, onType }: Props) {
     const cardRef = useRef<HTMLDivElement>(null);
     const mine = useMemo(() => (text.length ? Math.min(100, (typed.length / text.length) * 100) : 0), [typed, text]);
 
@@ -20,6 +21,9 @@ export default function Race({ text, typed, rival, inputRef, onType }: Props) {
 
     return (
         <div onClick={() => inputRef.current?.focus()} className="flex min-h-screen w-full flex-col items-center justify-center bg-[#121110] px-6 pt-24">
+            <div className="mb-3 w-full max-w-3xl text-xs text-[#6F6A5F]">
+                racing <span className="text-[#5D8AFF]">{rivalName || "opponent"}</span>
+            </div>
             <div className="mb-8 h-px w-full max-w-3xl bg-[#2C2A27]">
                 <div className="h-px bg-[#D6FF3D] transition-[width] duration-150 ease-out" style={{ width: mine + "%" }} />
             </div>
