@@ -3,7 +3,7 @@ import gsap from "gsap";
 import { colors, mono } from "../lib/theme";
 import { type Score } from "../lib/fire";
 
-type Stage = "home" | "wait" | "result";
+type Stage = "home" | "wait" | "queue" | "result";
 
 function extract(value: string): string {
     try {
@@ -31,9 +31,18 @@ interface Props {
     verdictRef: RefObject<HTMLHeadingElement | null>;
     again: () => void;
     rematch: () => void;
+    signedIn: boolean;
+    elo: number;
+    queueMode: "ranked" | "casual" | null;
+    queueRanked: () => void;
+    queueCasual: () => void;
+    cancelQueue: () => void;
 }
 
-export default function Home({ stage, name, setName, locked, joining, create, join, joinCode, link, copied, share, board, verdict, verdictRef, again, rematch }: Props) {
+export default function Home({
+    stage, name, setName, locked, joining, create, join, joinCode, link, copied, share,
+    board, verdict, verdictRef, again, rematch, signedIn, elo, queueMode, queueRanked, queueCasual, cancelQueue
+}: Props) {
     const [code, setCode] = useState("");
     const codeInput = useRef<HTMLInputElement>(null);
     const root = useRef<HTMLDivElement>(null);
@@ -62,7 +71,7 @@ export default function Home({ stage, name, setName, locked, joining, create, jo
                 {stage === "home" && (
                     <div className="flex w-full max-w-md flex-col items-center gap-10">
                         <div data-in className="flex flex-col items-center gap-2 text-center">
-                            <h1 className="text-2xl font-medium" style={{ color: colors.text }}>multiplayer type type :D</h1>
+                            <h1 className="text-2xl font-medium" style={{ color: colors.text }}>race a friend, same passage, real time</h1>
                         </div>
 
                         <div data-in className="w-full">
@@ -79,7 +88,7 @@ export default function Home({ stage, name, setName, locked, joining, create, jo
                                 onBlur={event => (event.currentTarget.style.borderColor = colors.border)}
                             />
                             {locked && (
-                                <div className="mt-1.5 text-center text-[10px]" style={{ color: colors.muted }}>signed in as {name || "racer"} · change in settings</div>
+                                <div className="mt-1.5 text-center text-[10px]" style={{ color: colors.muted }}>signed in as {name || "racer"} · elo {elo}</div>
                             )}
                         </div>
 
@@ -99,6 +108,27 @@ export default function Home({ stage, name, setName, locked, joining, create, jo
                                 onMouseLeave={event => (event.currentTarget.style.borderColor = colors.border)}
                             >
                                 {joining ? "join " + joining : "join race"}
+                            </button>
+                        </div>
+
+                        <div data-in className="grid w-full grid-cols-2 gap-3">
+                            <button
+                                onClick={queueRanked}
+                                disabled={!signedIn}
+                                title={signedIn ? undefined : "sign in to play ranked"}
+                                className="rounded-lg border py-3.5 text-sm font-medium transition-colors duration-150 disabled:opacity-30"
+                                style={{ borderColor: colors.accent, color: colors.accent }}
+                            >
+                                ranked queue
+                            </button>
+                            <button
+                                onClick={queueCasual}
+                                className="rounded-lg border py-3.5 text-sm font-medium transition-colors duration-150"
+                                style={{ borderColor: colors.border, color: colors.text }}
+                                onMouseEnter={event => (event.currentTarget.style.borderColor = colors.muted)}
+                                onMouseLeave={event => (event.currentTarget.style.borderColor = colors.border)}
+                            >
+                                casual queue
                             </button>
                         </div>
 
@@ -132,6 +162,24 @@ export default function Home({ stage, name, setName, locked, joining, create, jo
                                 <span>races <span style={{ color: colors.text }}>{stats.races}</span></span>
                             </div>
                         )}
+                    </div>
+                )}
+
+                {stage === "queue" && (
+                    <div data-in className="flex w-full max-w-md flex-col items-center gap-6 text-center">
+                        <h1 className="text-lg font-medium" style={{ color: colors.text }}>
+                            {queueMode === "ranked" ? "finding a ranked match" : "finding an opponent"}
+                        </h1>
+                        <span className="inline-block h-4 w-[2px] animate-[blink_1s_step-end_infinite]" style={{ backgroundColor: colors.muted }} />
+                        <button
+                            onClick={cancelQueue}
+                            className="rounded-lg border px-5 py-2.5 text-xs font-medium transition-colors duration-150"
+                            style={{ borderColor: colors.border, color: colors.muted }}
+                            onMouseEnter={event => (event.currentTarget.style.borderColor = colors.muted)}
+                            onMouseLeave={event => (event.currentTarget.style.borderColor = colors.border)}
+                        >
+                            cancel
+                        </button>
                     </div>
                 )}
 

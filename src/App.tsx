@@ -6,19 +6,10 @@ import Home from "./pages/Home";
 import Board from "./pages/Board";
 import Settings from "./pages/Settings";
 import { colors } from "./lib/theme";
-import { saveRace, load, getProfileName, ensureProfile, signIn, signOutUser, watchUser, type Score } from "./lib/fire";
+import { generate } from "./lib/words";
+import { saveRace, updateElo, load, getProfile, ensureProfile, signIn, signOutUser, watchUser, type Score } from "./lib/fire";
 
-type Screen = "home" | "wait" | "race" | "result" | "board" | "settings";
-
-const bank = [
-    "the quick brown fox jumps over the lazy dog and runs across the field",
-    "practice does not make perfect practice makes permanent so practice correctly",
-    "typing fast means nothing if your fingers forget where the letters live",
-    "a calm mind types faster than a hurried one every single time",
-    "speed comes from rhythm not from rushing every single key you press",
-    "the sky above the city turned orange just before the storm arrived",
-    "good habits compound slowly but bad habits compound just as fast"
-];
+type Screen = "home" | "wait" | "queue" | "race" | "result" | "board" | "settings";
 
 const worker = "wss://nimbus.aryanmadan.workers.dev";
 
@@ -44,8 +35,10 @@ export default function App() {
     const [copied, setCopied] = useState(false);
     const [user, setUser] = useState<User | null>(null);
     const [profileName, setProfileNameState] = useState("");
+    const [elo, setElo] = useState(1200);
     const [ready, setReady] = useState(false);
     const [rivalReady, setRivalReady] = useState(false);
+    const [queueMode, setQueueMode] = useState<"ranked" | "casual" | null>(null);
 
     const room = useRef("");
     const host = useRef(false);
@@ -58,20 +51,28 @@ export default function App() {
     const input = useRef<HTMLInputElement>(null);
     const verdictRef = useRef<HTMLHeadingElement>(null);
     const wordRef = useRef<HTMLSpanElement>(null);
+    const queueSock = useRef<WebSocket | null>(null);
+    const matchedText = useRef<string | null>(null);
+    const rankedMode = useRef(false);
+    const rankedOpponent = useRef<{ uid: string; name: string; elo: number } | null>(null);
+    const guest = useRef("");
 
     const joining = new URLSearchParams(location.search).get("room");
 
     useEffect(() => {
         refresh();
         if (joining) room.current = joining;
+        guest.current = crypto.randomUUID();
         const unsub = watchUser(async next => {
             setUser(next);
             if (next) {
                 await ensureProfile(next.uid, next.displayName ?? "racer");
-                const existing = await getProfileName(next.uid);
-                setProfileNameState(existing || next.displayName || "");
+                const profile = await getProfile(next.uid);
+                setProfileNameState(profile?.name || next.displayName || "");
+                setElo(profile?.elo ?? 1200);
             } else {
                 setProfileNameState("");
+                setElo(1200);
             }
         });
         if (wordRef.current) {
@@ -115,6 +116,45 @@ export default function App() {
         history.replaceState(null, "", "?room=" + value);
         setScreen("wait");
         connect();
+    }
+
+    function queueRanked() {
+        startQueue("ranked");
+    }
+
+    function queueCasual() {
+        startQueue("casual");
+    }
+
+    function startQueue(mode: "ranked" | "casual") {
+        const uid = user?.uid || guest.current;
+        setQueueMode(mode);
+        setScreen("queue");
+        queueSock.current = new WebSocket(
+            worker + "/queue?uid=" + encodeURIComponent(uid) + "&elo=" + elo + "&name=" + encodeURIComponent(displayName()) + "&mode=" + mode
+        );
+        queueSock.current.onmessage = event => {
+            const msg = JSON.parse(event.data);
+            if (msg.type === "matched") {
+                room.current = msg.room;
+                host.current = uid < msg.opponent.uid;
+                matchedText.current = msg.text;
+                rankedMode.current = mode === "ranked";
+                rankedOpponent.current = msg.opponent;
+                queueSock.current?.close();
+                queueSock.current = null;
+                setQueueMode(null);
+                setScreen("wait");
+                connect();
+            }
+        };
+    }
+
+    function cancelQueue() {
+        queueSock.current?.close();
+        queueSock.current = null;
+        setQueueMode(null);
+        setScreen("home");
     }
 
     function connect() {
@@ -168,7 +208,8 @@ export default function App() {
         channel.onopen = () => {
             channel.send(JSON.stringify({ type: "name", name: displayName() }));
             if (host.current) {
-                const chosen = bank[Math.floor(Math.random() * bank.length)];
+                const chosen = matchedText.current || generate();
+                matchedText.current = null;
                 channel.send(JSON.stringify({ type: "start", text: chosen }));
                 begin(chosen);
             }
@@ -233,9 +274,7 @@ export default function App() {
             chan.current.send(JSON.stringify({ type: "finish", wpm }));
         }
         if (user) {
-            saveRace(user.uid, { wpm, accuracy })
-                .then(refresh)
-                .catch(err => console.error("saveRace failed", err));
+            saveRace(user.uid, { wpm, accuracy }).then(refresh).catch(err => console.error("saveRace failed", err));
         }
         announce(true, wpm, accuracy);
     }
@@ -244,10 +283,18 @@ export default function App() {
         done.current = true;
         setScreen("result");
         setVerdict(win ? "you win — " + wpm + "wpm, " + accuracy + "% accuracy" : "rival wins — they hit " + wpm + "wpm first");
+
+        if (rankedMode.current && user && rankedOpponent.current) {
+            updateElo(user.uid, displayName(), rankedOpponent.current.elo, win ? 1 : 0)
+                .then(next => { setElo(next); refresh(); })
+                .catch(err => console.error("updateElo failed", err));
+        }
     }
 
     function rematch() {
-        const chosen = bank[Math.floor(Math.random() * bank.length)];
+        rankedMode.current = false;
+        rankedOpponent.current = null;
+        const chosen = generate();
         if (chan.current?.readyState === "open") {
             chan.current.send(JSON.stringify({ type: "start", text: chosen }));
         }
@@ -335,7 +382,7 @@ export default function App() {
             </header>
 
             <div className="relative z-10">
-                {(screen === "home" || screen === "wait" || screen === "result") && (
+                {(screen === "home" || screen === "wait" || screen === "queue" || screen === "result") && (
                     <Home
                         stage={screen}
                         name={user ? (profileName || user.displayName || "") : name}
@@ -353,6 +400,12 @@ export default function App() {
                         verdictRef={verdictRef}
                         again={again}
                         rematch={rematch}
+                        signedIn={!!user}
+                        elo={elo}
+                        queueMode={queueMode}
+                        queueRanked={queueRanked}
+                        queueCasual={queueCasual}
+                        cancelQueue={cancelQueue}
                     />
                 )}
 
