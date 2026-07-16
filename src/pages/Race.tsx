@@ -84,6 +84,10 @@ export default function Race({ text, typed, rival, rivalName, ready, rivalReady,
         type(value);
     }
 
+    function blockPaste(event: React.ClipboardEvent<HTMLInputElement>) {
+        event.preventDefault();
+    }
+
     const percent = (wait / 15) * 100;
 
     return (
@@ -177,6 +181,7 @@ export default function Race({ text, typed, rival, rivalName, ready, rivalReady,
                 ref={input}
                 value={typed}
                 onChange={event => type_(event.target.value)}
+                onPaste={blockPaste}
                 autoFocus
                 spellCheck={false}
                 autoCapitalize="off"
