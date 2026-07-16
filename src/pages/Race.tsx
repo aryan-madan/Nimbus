@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import gsap from "gsap";
 import { Check, Loader2 } from "lucide-react";
 import Type from "../components/Type";
@@ -11,11 +11,12 @@ interface Props {
     rivalName: string;
     ready: boolean;
     rivalReady: boolean;
-    input: RefObject<HTMLInputElement | null>;
+    input: React.RefObject<HTMLInputElement | null>;
     type: (value: string) => void;
     onReady: () => void;
     rematch: () => void;
     start: () => void;
+    leave: () => void;
 }
 
 export default function Race({ text, typed, rival, rivalName, ready, rivalReady, input, type, onReady, rematch, start }: Props) {

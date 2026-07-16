@@ -7,6 +7,7 @@ import Board from "./pages/Board";
 import Settings from "./pages/Settings";
 import { colors } from "./lib/theme";
 import { generate } from "./lib/words";
+import { iceServers } from "./lib/ice";
 import { saveRace, updateElo, load, getProfile, ensureProfile, signIn, signOutUser, watchUser, type Score } from "./lib/fire";
 
 type Screen = "home" | "wait" | "queue" | "found" | "race" | "result" | "board" | "settings";
@@ -184,7 +185,9 @@ export default function App() {
     function connect() {
         setRivalName("");
         sock.current = new WebSocket(worker + "?room=" + room.current);
-        const conn = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+        const conn = new RTCPeerConnection({
+            iceServers,
+        });
         peer.current = conn;
 
         conn.onicecandidate = event => {
@@ -348,10 +351,6 @@ export default function App() {
         }
     }
 
-    // Explicit "I don't want this" bail-out — used from the pre-start ready-up
-    // screen in Race (e.g. after being dragged into an unwanted rematch).
-    // Reuses the same "leave" signal beforeunload already sends, so the other
-    // player gets a clean forfeit result instead of hanging with a dead peer.
     function leaveRace() {
         if (chan.current?.readyState === "open" && racing.current && !done.current) {
             try { chan.current.send(JSON.stringify({ type: "leave" })); } catch { }
