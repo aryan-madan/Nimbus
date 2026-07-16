@@ -18,6 +18,11 @@ interface Opponent {
     elo: number;
 }
 
+interface Result {
+    wpm: number;
+    accuracy: number;
+}
+
 const worker = "wss://nimbus.aryanmadan.workers.dev";
 
 function code(): string {
@@ -57,8 +62,11 @@ export default function App() {
     const chan = useRef<RTCDataChannel | null>(null);
     const passage = useRef("");
     const start = useRef(0);
-    const done = useRef(false);
+    const raceOver = useRef(false);
     const racing = useRef(false);
+    const myDone = useRef(false);
+    const myResult = useRef<Result | null>(null);
+    const rivalResult = useRef<Result | null>(null);
     const input = useRef<HTMLInputElement>(null);
     const verdictRef = useRef<HTMLHeadingElement>(null);
     const wordRef = useRef<HTMLSpanElement>(null);
@@ -91,7 +99,7 @@ export default function App() {
             gsap.fromTo(wordRef.current, { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.7, ease: "steps(6)" });
         }
         function handleUnload() {
-            if (chan.current?.readyState === "open" && racing.current && !done.current) {
+            if (chan.current?.readyState === "open" && racing.current && !raceOver.current) {
                 try { chan.current.send(JSON.stringify({ type: "leave" })); } catch { }
             }
         }
@@ -196,7 +204,7 @@ export default function App() {
 
         conn.onconnectionstatechange = () => {
             const state = conn.connectionState;
-            if ((state === "disconnected" || state === "failed" || state === "closed") && racing.current && !done.current) {
+            if ((state === "disconnected" || state === "failed" || state === "closed") && racing.current && !raceOver.current) {
                 forfeit();
             }
         };
@@ -254,8 +262,11 @@ export default function App() {
             else if (msg.type === "start") begin(msg.text);
             else if (msg.type === "ready") setRivalReady(true);
             else if (msg.type === "progress") setRival(msg.value);
-            else if (msg.type === "finish" && !done.current) announce(false, msg.wpm);
-            else if (msg.type === "leave" && !done.current) forfeit();
+            else if (msg.type === "finish" && !raceOver.current) {
+                rivalResult.current = { wpm: msg.wpm, accuracy: msg.accuracy };
+                tryConclude();
+            }
+            else if (msg.type === "leave" && !raceOver.current) forfeit();
         };
     }
 
@@ -264,8 +275,11 @@ export default function App() {
         setText(chosen);
         setScreen("race");
         start.current = 0;
-        done.current = false;
+        raceOver.current = false;
         racing.current = true;
+        myDone.current = false;
+        myResult.current = null;
+        rivalResult.current = null;
         setTyped("");
         setRival(0);
         setReady(false);
@@ -287,6 +301,7 @@ export default function App() {
 
     function type(value: string) {
         if (!start.current) start.current = Date.now();
+        if (myDone.current || raceOver.current) return;
         if (value.length < typed.length && value.length < lock(passage.current, typed.length)) return;
         if (value.length > passage.current.length) return;
 
@@ -295,52 +310,86 @@ export default function App() {
         if (chan.current?.readyState === "open") {
             chan.current.send(JSON.stringify({ type: "progress", value: percent }));
         }
-        if (value.length === passage.current.length && value === passage.current && !done.current) finish(value);
+        if (value.length === passage.current.length) finish(value);
     }
 
     function finish(value: string) {
-        done.current = true;
-        racing.current = false;
+        if (myDone.current || raceOver.current) return;
+        myDone.current = true;
+
         const minutes = (Date.now() - start.current) / 60000;
         const count = passage.current.trim().split(/\s+/).length;
-        const wpm = Math.round(count / minutes);
+        const wpm = Math.max(0, Math.round(count / minutes));
 
         let errors = 0;
         for (let i = 0; i < value.length; i++) if (value[i] !== passage.current[i]) errors++;
         const accuracy = Math.round(((value.length - errors) / value.length) * 100);
 
+        myResult.current = { wpm, accuracy };
+
         if (chan.current?.readyState === "open") {
-            chan.current.send(JSON.stringify({ type: "finish", wpm }));
+            chan.current.send(JSON.stringify({ type: "finish", wpm, accuracy }));
         }
         if (user) {
             saveRace(user.uid, { wpm, accuracy }).then(refresh).catch(err => console.error("saveRace failed", err));
         }
-        announce(true, wpm, accuracy);
+
+        tryConclude();
     }
 
-    function forfeit() {
-        if (!racing.current || done.current) return;
-        done.current = true;
-        racing.current = false;
-        announce(true, 0, undefined, true);
+    function tryConclude() {
+        if (raceOver.current) return;
+        if (!myResult.current || !rivalResult.current) return;
+
+        const mine = myResult.current;
+        const theirs = rivalResult.current;
+        const myScore = mine.wpm * (mine.accuracy / 100);
+        const theirScore = theirs.wpm * (theirs.accuracy / 100);
+        const tie = myScore === theirScore;
+        const win = myScore > theirScore;
+
+        conclude(win, tie, mine, theirs);
     }
 
-    function announce(win: boolean, wpm: number, accuracy?: number, forfeited = false) {
-        done.current = true;
+    function conclude(win: boolean, tie: boolean, mine: Result, theirs: Result) {
         racing.current = false;
+        raceOver.current = true;
         setScreen("result");
         setVerdict(
-            forfeited
-                ? "opponent disconnected — you win by forfeit"
+            tie
+                ? "tie — " + mine.wpm + "wpm/" + mine.accuracy + "% vs " + theirs.wpm + "wpm/" + theirs.accuracy + "%"
                 : win
-                    ? "you win — " + wpm + "wpm, " + accuracy + "% accuracy"
-                    : "rival wins — they hit " + wpm + "wpm first"
+                    ? "you win — " + mine.wpm + "wpm/" + mine.accuracy + "% vs " + theirs.wpm + "wpm/" + theirs.accuracy + "%"
+                    : "rival wins — " + mine.wpm + "wpm/" + mine.accuracy + "% vs " + theirs.wpm + "wpm/" + theirs.accuracy + "%"
         );
 
         if (rankedMode.current && user && rankedOpponent.current) {
             const before = eloBefore.current;
             const opponent = rankedOpponent.current;
-            updateElo(user.uid, opponent.elo, win ? 1 : 0)
+            const score = tie ? 0.5 : win ? 1 : 0;
+            updateElo(user.uid, opponent.elo, score)
+                .then(next => {
+                    setElo(next);
+                    setEloDelta(next - before);
+                    refresh();
+                })
+                .catch(err => console.error("updateElo failed", err));
+        } else {
+            setEloDelta(null);
+        }
+    }
+
+    function forfeit() {
+        if (raceOver.current) return;
+        racing.current = false;
+        raceOver.current = true;
+        setScreen("result");
+        setVerdict("opponent disconnected — you win by forfeit");
+
+        if (rankedMode.current && user && rankedOpponent.current) {
+            const before = eloBefore.current;
+            const opponent = rankedOpponent.current;
+            updateElo(user.uid, opponent.elo, 1)
                 .then(next => {
                     setElo(next);
                     setEloDelta(next - before);
@@ -353,11 +402,14 @@ export default function App() {
     }
 
     function leaveRace() {
-        if (chan.current?.readyState === "open" && racing.current && !done.current) {
+        if (chan.current?.readyState === "open" && racing.current && !raceOver.current) {
             try { chan.current.send(JSON.stringify({ type: "leave" })); } catch { }
         }
-        done.current = true;
+        raceOver.current = true;
         racing.current = false;
+        myDone.current = false;
+        myResult.current = null;
+        rivalResult.current = null;
         try { chan.current?.close(); } catch { }
         try { peer.current?.close(); } catch { }
         try { sock.current?.close(); } catch { }
@@ -501,11 +553,8 @@ export default function App() {
                         input={input}
                         type={type}
                         onReady={markReady}
-                        rematch={rematch}
                         start={raceStart}
                         leave={leaveRace}
-                        ranked={rankedMode.current}
-                        eloChange={eloDelta ?? undefined}
                     />
                 )}
 
