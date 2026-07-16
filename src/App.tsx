@@ -340,7 +340,7 @@ export default function App() {
         if (rankedMode.current && user && rankedOpponent.current) {
             const before = eloBefore.current;
             const opponent = rankedOpponent.current;
-            updateElo(user.uid, displayName(), opponent.elo, win ? 1 : 0)
+            updateElo(user.uid, opponent.elo, win ? 1 : 0)
                 .then(next => {
                     setElo(next);
                     setEloDelta(next - before);
@@ -504,6 +504,8 @@ export default function App() {
                         rematch={rematch}
                         start={raceStart}
                         leave={leaveRace}
+                        ranked={rankedMode.current}
+                        eloChange={eloDelta ?? undefined}
                     />
                 )}
 
