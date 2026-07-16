@@ -7,7 +7,7 @@ export const colors = {
     text: "#F2EEE6",
     muted: "#6F6A5F",
     faint: "#3E3B36",
-    accent: "#D6FF3D",
-    rival: "#5D8AFF",
+    accent: "#4EA8FF",
+    rival: "#FF9F5D",
     error: "#FF5B54"
 };

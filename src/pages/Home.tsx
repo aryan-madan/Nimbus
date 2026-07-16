@@ -1,5 +1,5 @@
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
-import gsap from "gsap";
+import { Zap, Users, Link2, ChevronRight } from "lucide-react";
 import { colors, mono } from "../lib/theme";
 import { type Score } from "../lib/fire";
 
@@ -55,7 +55,6 @@ export default function Home({
 }: Props) {
     const [code, setCode] = useState("");
     const codeInput = useRef<HTMLInputElement>(null);
-    const root = useRef<HTMLDivElement>(null);
 
     const stats = useMemo(() => {
         if (!board.length) return null;
@@ -69,22 +68,32 @@ export default function Home({
         if (code.trim()) joinCode(extract(code));
     }
 
+    // Simple CSS-driven entrance: each stage starts hidden, flips to visible
+    // one frame later. No JS animation library involved, so there's nothing
+    // that can double-fire or snap back — just a plain opacity/transform
+    // transition per element, staggered with transitionDelay.
+    const [show, setShow] = useState(false);
     useEffect(() => {
-        if (!root.current) return;
-        const items = root.current.querySelectorAll("[data-in]");
-        gsap.fromTo(items, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.45, stagger: 0.06, ease: "power3.out" });
+        setShow(false);
+        const raf = requestAnimationFrame(() => setShow(true));
+        return () => cancelAnimationFrame(raf);
     }, [stage]);
 
+    const enterClass = "transition-all duration-500 ease-out " + (show ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2");
+    function delay(i: number): React.CSSProperties {
+        return { transitionDelay: show ? `${i * 60}ms` : "0ms" };
+    }
+
     return (
-        <div ref={root} className="flex min-h-screen w-full flex-col">
+        <div className="flex min-h-screen w-full flex-col">
             <main className="flex flex-1 flex-col items-center justify-center px-6 pb-16 pt-32">
                 {stage === "home" && (
-                    <div className="flex w-full max-w-md flex-col items-center gap-10">
-                        <div data-in className="flex flex-col items-center gap-2 text-center">
-                            <h1 className="text-2xl font-medium" style={{ color: colors.text }}>race a friend, same passage, real time</h1>
+                    <div className="flex w-full max-w-md flex-col items-center gap-8">
+                        <div className={enterClass + " flex flex-col items-center gap-2 text-center"} style={delay(0)}>
+                            <h1 className="text-2xl font-medium" style={{ color: colors.text }}>multiplayer type type :D</h1>
                         </div>
 
-                        <div data-in className="w-full">
+                        <div className={enterClass + " w-full"} style={delay(1)}>
                             <input
                                 value={name}
                                 maxLength={16}
@@ -102,47 +111,68 @@ export default function Home({
                             )}
                         </div>
 
-                        <div data-in className="grid w-full grid-cols-2 gap-3">
-                            <button
-                                onClick={create}
-                                className="rounded-lg py-3.5 text-sm font-medium transition-opacity duration-150 hover:opacity-90 active:opacity-80"
-                                style={{ backgroundColor: colors.accent, color: colors.bg }}
+                        <button
+                            onClick={create}
+                            className={enterClass + " w-full rounded-2xl py-4 text-sm font-medium hover:opacity-90 active:scale-[0.98] active:opacity-80"}
+                            style={{ ...delay(2), backgroundColor: colors.accent, color: colors.bg }}
+                        >
+                            start race
+                        </button>
+
+                        <div className={enterClass + " flex w-full flex-col overflow-hidden rounded-2xl border"} style={{ ...delay(3), borderColor: colors.border, backgroundColor: colors.panel }}>
+                            <div
+                                className="px-4 py-2.5 text-[10px] font-medium uppercase tracking-wide"
+                                style={{ color: colors.muted }}
                             >
-                                start race
-                            </button>
+                                quick match
+                            </div>
+
+                            <div className="h-px w-full" style={{ backgroundColor: colors.border }} />
+
                             <button
                                 onClick={() => (joining ? join() : codeInput.current?.focus())}
-                                className="rounded-lg border py-3.5 text-sm font-medium transition-colors duration-150"
-                                style={{ borderColor: colors.border, color: colors.text }}
-                                onMouseEnter={event => (event.currentTarget.style.borderColor = colors.muted)}
-                                onMouseLeave={event => (event.currentTarget.style.borderColor = colors.border)}
+                                className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-sm transition-colors duration-150"
+                                style={{ color: colors.text }}
+                                onMouseEnter={event => (event.currentTarget.style.backgroundColor = colors.border)}
+                                onMouseLeave={event => (event.currentTarget.style.backgroundColor = "transparent")}
                             >
-                                {joining ? "join " + joining : "join race"}
+                                <Link2 size={15} strokeWidth={2.25} style={{ color: colors.muted }} />
+                                <span className="flex-1">{joining ? "join " + joining : "join race"}</span>
+                                <ChevronRight size={15} style={{ color: colors.faint }} />
                             </button>
-                        </div>
 
-                        <div data-in className="grid w-full grid-cols-2 gap-3">
+                            <div className="h-px w-full" style={{ backgroundColor: colors.border }} />
+
                             <button
                                 onClick={queueRanked}
                                 disabled={!signedIn}
                                 title={signedIn ? undefined : "sign in to play ranked"}
-                                className="rounded-lg border py-3.5 text-sm font-medium transition-colors duration-150 disabled:opacity-30"
-                                style={{ borderColor: colors.accent, color: colors.accent }}
+                                className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-sm transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-30"
+                                style={{ color: colors.accent }}
+                                onMouseEnter={event => signedIn && (event.currentTarget.style.backgroundColor = colors.border)}
+                                onMouseLeave={event => (event.currentTarget.style.backgroundColor = "transparent")}
                             >
-                                ranked queue
+                                <Zap size={15} strokeWidth={2.25} style={{ color: colors.accent }} />
+                                <span className="flex-1 font-medium">ranked queue</span>
+                                <span className="text-[10px]" style={{ ...mono, color: colors.accent, opacity: 0.75 }}>±elo</span>
                             </button>
+
+                            <div className="h-px w-full" style={{ backgroundColor: colors.border }} />
+
                             <button
                                 onClick={queueCasual}
-                                className="rounded-lg border py-3.5 text-sm font-medium transition-colors duration-150"
-                                style={{ borderColor: colors.border, color: colors.text }}
-                                onMouseEnter={event => (event.currentTarget.style.borderColor = colors.muted)}
-                                onMouseLeave={event => (event.currentTarget.style.borderColor = colors.border)}
+                                className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-sm transition-colors duration-150"
+                                style={{ color: colors.text }}
+                                onMouseEnter={event => (event.currentTarget.style.backgroundColor = colors.border)}
+                                onMouseLeave={event => (event.currentTarget.style.backgroundColor = "transparent")}
                             >
-                                casual queue
+                                <Users size={15} strokeWidth={2.25} style={{ color: colors.muted }} />
+                                <span className="flex-1">casual queue</span>
+                                <span className="text-[10px]" style={{ ...mono, color: colors.faint }}>no elo</span>
                             </button>
                         </div>
 
-                        <div data-in className="flex w-full gap-2">
+                        <div className={enterClass + " flex w-full gap-2"} style={delay(4)}>
                             <input
                                 ref={codeInput}
                                 value={code}
@@ -166,7 +196,7 @@ export default function Home({
                         </div>
 
                         {stats && (
-                            <div data-in className="flex w-full items-center justify-center gap-6 text-xs" style={{ ...mono, color: colors.muted }}>
+                            <div className={enterClass + " flex w-full items-center justify-center gap-6 text-xs"} style={{ ...delay(5), ...mono, color: colors.muted }}>
                                 <span>fastest <span style={{ color: colors.text }}>{stats.fastest}</span></span>
                                 <span>best <span style={{ color: colors.text }}>{stats.acc}</span></span>
                                 <span>races <span style={{ color: colors.text }}>{stats.races}</span></span>
@@ -176,14 +206,14 @@ export default function Home({
                 )}
 
                 {stage === "queue" && (
-                    <div data-in className="flex w-full max-w-md flex-col items-center gap-6 text-center">
+                    <div className={enterClass + " flex w-full max-w-md flex-col items-center gap-6 text-center"} style={delay(0)}>
                         <h1 className="text-lg font-medium" style={{ color: colors.text }}>
                             {queueMode === "ranked" ? "finding a ranked match" : "finding an opponent"}
                         </h1>
                         <span className="inline-block h-4 w-[2px] animate-[blink_1s_step-end_infinite]" style={{ backgroundColor: colors.muted }} />
                         <button
                             onClick={cancelQueue}
-                            className="rounded-lg border px-5 py-2.5 text-xs font-medium transition-colors duration-150"
+                            className="rounded-2xl border px-5 py-2.5 text-xs font-medium transition-colors duration-150"
                             style={{ borderColor: colors.border, color: colors.muted }}
                             onMouseEnter={event => (event.currentTarget.style.borderColor = colors.muted)}
                             onMouseLeave={event => (event.currentTarget.style.borderColor = colors.border)}
@@ -194,7 +224,7 @@ export default function Home({
                 )}
 
                 {stage === "found" && (
-                    <div data-in className="flex w-full max-w-md flex-col items-center gap-8 text-center">
+                    <div className={enterClass + " flex w-full max-w-md flex-col items-center gap-8 text-center"} style={delay(0)}>
                         <h1 className="text-lg font-medium" style={{ color: colors.text }}>match found</h1>
                         <div className="flex w-full items-center justify-center gap-6">
                             <div className="flex flex-1 flex-col items-center gap-1">
@@ -212,18 +242,18 @@ export default function Home({
                 )}
 
                 {stage === "wait" && (
-                    <div data-in className="flex w-full max-w-md flex-col items-center gap-6 text-center">
+                    <div className={enterClass + " flex w-full max-w-md flex-col items-center gap-6 text-center"} style={delay(0)}>
                         <h1 className="text-lg font-medium" style={{ color: colors.text }}>waiting for your friend</h1>
                         <div className="flex w-full gap-2">
                             <input
                                 readOnly
                                 value={link}
-                                className="flex-1 truncate rounded-lg border px-3 py-2.5 text-xs"
+                                className="flex-1 truncate rounded-2xl border px-3 py-2.5 text-xs"
                                 style={{ ...mono, borderColor: colors.border, backgroundColor: colors.panel, color: colors.muted }}
                             />
                             <button
                                 onClick={share}
-                                className="shrink-0 rounded-lg px-4 text-xs font-medium transition-opacity duration-150 hover:opacity-90"
+                                className="shrink-0 rounded-2xl px-4 text-xs font-medium transition-opacity duration-150 hover:opacity-90"
                                 style={{ backgroundColor: colors.accent, color: colors.bg }}
                             >
                                 {copied ? "copied" : "copy"}
@@ -246,17 +276,17 @@ export default function Home({
                                 {eloDelta >= 0 ? "+" : ""}{eloDelta} elo
                             </div>
                         )}
-                        <div data-in className="flex w-full flex-col gap-3">
+                        <div className={enterClass + " flex w-full flex-col gap-3"} style={delay(0)}>
                             <button
                                 onClick={rematch}
-                                className="w-full rounded-lg py-3.5 text-sm font-medium transition-opacity duration-150 hover:opacity-90"
+                                className="w-full rounded-2xl py-3.5 text-sm font-medium transition-all duration-150 hover:opacity-90 active:scale-[0.98]"
                                 style={{ backgroundColor: colors.accent, color: colors.bg }}
                             >
                                 rematch
                             </button>
                             <button
                                 onClick={again}
-                                className="w-full rounded-lg border py-3.5 text-sm font-medium transition-colors duration-150"
+                                className="w-full rounded-2xl border py-3.5 text-sm font-medium transition-colors duration-150"
                                 style={{ borderColor: colors.border, color: colors.text }}
                                 onMouseEnter={event => (event.currentTarget.style.borderColor = colors.muted)}
                                 onMouseLeave={event => (event.currentTarget.style.borderColor = colors.border)}
