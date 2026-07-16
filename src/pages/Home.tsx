@@ -68,10 +68,6 @@ export default function Home({
         if (code.trim()) joinCode(extract(code));
     }
 
-    // Simple CSS-driven entrance: each stage starts hidden, flips to visible
-    // one frame later. No JS animation library involved, so there's nothing
-    // that can double-fire or snap back — just a plain opacity/transform
-    // transition per element, staggered with transitionDelay.
     const [show, setShow] = useState(false);
     useEffect(() => {
         setShow(false);
@@ -83,6 +79,8 @@ export default function Home({
     function delay(i: number): React.CSSProperties {
         return { transitionDelay: show ? `${i * 60}ms` : "0ms" };
     }
+
+    const resultRanked = eloDelta !== null;
 
     return (
         <div className="flex min-h-screen w-full flex-col">
@@ -263,13 +261,15 @@ export default function Home({
                             </div>
                         )}
                         <div className={enterClass + " flex w-full flex-col gap-3"} style={delay(0)}>
-                            <button
-                                onClick={rematch}
-                                className="w-full rounded-2xl py-3.5 text-sm font-medium transition-all duration-150 hover:opacity-90 active:scale-[0.98]"
-                                style={{ backgroundColor: colors.accent, color: colors.bg }}
-                            >
-                                rematch
-                            </button>
+                            {!resultRanked && (
+                                <button
+                                    onClick={rematch}
+                                    className="w-full rounded-2xl py-3.5 text-sm font-medium transition-all duration-150 hover:opacity-90 active:scale-[0.98]"
+                                    style={{ backgroundColor: colors.accent, color: colors.bg }}
+                                >
+                                    rematch
+                                </button>
+                            )}
                             <button
                                 onClick={again}
                                 className="w-full rounded-2xl border py-3.5 text-sm font-medium transition-colors duration-150"

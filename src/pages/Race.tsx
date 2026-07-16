@@ -17,9 +17,11 @@ interface Props {
     rematch: () => void;
     start: () => void;
     leave: () => void;
+    ranked: boolean;
+    eloChange?: number;
 }
 
-export default function Race({ text, typed, rival, rivalName, ready, rivalReady, input, type, onReady, rematch, start }: Props) {
+export default function Race({ text, typed, rival, rivalName, ready, rivalReady, input, type, onReady, rematch, start, ranked, eloChange }: Props) {
     const card = useRef<HTMLDivElement>(null);
     const box = useRef<HTMLDivElement>(null);
     const [count, setCount] = useState<number | null>(null);
@@ -154,13 +156,20 @@ export default function Race({ text, typed, rival, rivalName, ready, rivalReady,
                 {done && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-5" style={{ backgroundColor: colors.bg }}>
                         <div className="text-sm" style={{ color: colors.muted }}>race finished</div>
-                        <button
-                            onClick={rematch}
-                            className="rounded-lg px-6 py-2.5 text-sm font-medium transition-all duration-150 hover:opacity-90 active:scale-[0.98]"
-                            style={{ backgroundColor: colors.accent, color: colors.bg }}
-                        >
-                            rematch
-                        </button>
+                        {ranked && typeof eloChange === "number" && (
+                            <div className="text-2xl font-semibold" style={{ ...mono, color: eloChange >= 0 ? colors.accent : colors.rival }}>
+                                {eloChange >= 0 ? "+" : ""}{eloChange} elo
+                            </div>
+                        )}
+                        {!ranked && (
+                            <button
+                                onClick={rematch}
+                                className="rounded-lg px-6 py-2.5 text-sm font-medium transition-all duration-150 hover:opacity-90 active:scale-[0.98]"
+                                style={{ backgroundColor: colors.accent, color: colors.bg }}
+                            >
+                                rematch
+                            </button>
+                        )}
                     </div>
                 )}
             </div>

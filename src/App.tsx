@@ -288,13 +288,14 @@ export default function App() {
     function type(value: string) {
         if (!start.current) start.current = Date.now();
         if (value.length < typed.length && value.length < lock(passage.current, typed.length)) return;
+        if (value.length > passage.current.length) return;
 
         setTyped(value);
         const percent = Math.min(100, (value.length / passage.current.length) * 100);
         if (chan.current?.readyState === "open") {
             chan.current.send(JSON.stringify({ type: "progress", value: percent }));
         }
-        if (value.length === passage.current.length && !done.current) finish(value);
+        if (value.length === passage.current.length && value === passage.current && !done.current) finish(value);
     }
 
     function finish(value: string) {
