@@ -16,10 +16,13 @@ export class Room {
         const server = pair[1];
         server.accept();
 
-        for (const sock of this.socks) {
-            sock.send(JSON.stringify({ type: "peer" }));
-        }
         this.socks.push(server);
+
+        if (this.socks.length === 2) {
+            for (const sock of this.socks) {
+                sock.send(JSON.stringify({ type: "peer" }));
+            }
+        }
 
         server.addEventListener("message", event => {
             for (const sock of this.socks) {

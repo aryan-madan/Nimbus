@@ -1,5 +1,5 @@
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
-import { Zap, Users, Link2, ChevronRight } from "lucide-react";
+import { Zap, Users } from "lucide-react";
 import { colors, mono } from "../lib/theme";
 import { type Score } from "../lib/fire";
 
@@ -49,7 +49,7 @@ interface Props {
 }
 
 export default function Home({
-    stage, name, setName, locked, joining, create, join, joinCode, link, copied, share,
+    stage, name, setName, locked, create, joinCode, link, copied, share,
     board, verdict, verdictRef, again, rematch, signedIn, elo, queueMode, queueRanked, queueCasual, cancelQueue,
     foundOpponent, foundRanked, eloDelta
 }: Props) {
@@ -126,20 +126,6 @@ export default function Home({
                             >
                                 quick match
                             </div>
-
-                            <div className="h-px w-full" style={{ backgroundColor: colors.border }} />
-
-                            <button
-                                onClick={() => (joining ? join() : codeInput.current?.focus())}
-                                className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-sm transition-colors duration-150"
-                                style={{ color: colors.text }}
-                                onMouseEnter={event => (event.currentTarget.style.backgroundColor = colors.border)}
-                                onMouseLeave={event => (event.currentTarget.style.backgroundColor = "transparent")}
-                            >
-                                <Link2 size={15} strokeWidth={2.25} style={{ color: colors.muted }} />
-                                <span className="flex-1">{joining ? "join " + joining : "join race"}</span>
-                                <ChevronRight size={15} style={{ color: colors.faint }} />
-                            </button>
 
                             <div className="h-px w-full" style={{ backgroundColor: colors.border }} />
 

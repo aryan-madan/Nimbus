@@ -348,6 +348,27 @@ export default function App() {
         }
     }
 
+    // Explicit "I don't want this" bail-out — used from the pre-start ready-up
+    // screen in Race (e.g. after being dragged into an unwanted rematch).
+    // Reuses the same "leave" signal beforeunload already sends, so the other
+    // player gets a clean forfeit result instead of hanging with a dead peer.
+    function leaveRace() {
+        if (chan.current?.readyState === "open" && racing.current && !done.current) {
+            try { chan.current.send(JSON.stringify({ type: "leave" })); } catch { }
+        }
+        done.current = true;
+        racing.current = false;
+        try { chan.current?.close(); } catch { }
+        try { peer.current?.close(); } catch { }
+        try { sock.current?.close(); } catch { }
+        rankedMode.current = false;
+        rankedOpponent.current = null;
+        setReady(false);
+        setRivalReady(false);
+        setEloDelta(null);
+        setScreen("home");
+    }
+
     function rematch() {
         rankedMode.current = false;
         rankedOpponent.current = null;
@@ -482,6 +503,7 @@ export default function App() {
                         onReady={markReady}
                         rematch={rematch}
                         start={raceStart}
+                        leave={leaveRace}
                     />
                 )}
 
