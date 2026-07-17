@@ -18,15 +18,24 @@ interface Props {
     leave: () => void;
 }
 
-export default function Race({ text, typed, rival, rivalName, ready, rivalReady, input, type, onReady, start }: Props) {
+const FINISH_WINDOW_MS = 15000;
+
+export default function Race({ text, typed, rival, rivalName, ready, rivalReady, input, type, onReady, start, leave }: Props) {
     const card = useRef<HTMLDivElement>(null);
     const box = useRef<HTMLDivElement>(null);
     const [count, setCount] = useState<number | null>(null);
     const [wait, setWait] = useState(15);
+    const [finishDeadline, setFinishDeadline] = useState<number | null>(null);
+    const [remaining, setRemaining] = useState<number | null>(null);
+    const [myFinishAt, setMyFinishAt] = useState<number | null>(null);
+    const [rivalFinishAt, setRivalFinishAt] = useState<number | null>(null);
     const started = count === 0;
     const done = text.length > 0 && typed.length >= text.length;
+    const rivalDone = text.length > 0 && rival >= text.length;
     const once = useRef(false);
     const mine = useMemo(() => (text.length ? Math.min(100, (typed.length / text.length) * 100) : 0), [typed, text]);
+    const rivalPercent = useMemo(() => (text.length ? Math.min(100, (rival / text.length) * 100) : 0), [rival, text]);
+    const iWon = myFinishAt !== null && (rivalFinishAt === null || myFinishAt <= rivalFinishAt);
 
     useEffect(() => {
         if (card.current) gsap.fromTo(card.current, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" });
@@ -35,6 +44,10 @@ export default function Race({ text, typed, rival, rivalName, ready, rivalReady,
     useEffect(() => {
         setCount(null);
         setWait(15);
+        setFinishDeadline(null);
+        setRemaining(null);
+        setMyFinishAt(null);
+        setRivalFinishAt(null);
         once.current = false;
     }, [text]);
 
@@ -76,6 +89,34 @@ export default function Race({ text, typed, rival, rivalName, ready, rivalReady,
         if (box.current) gsap.to(box.current, { scale: ready && rivalReady ? 1.02 : 1, duration: 0.3, ease: "power2.out" });
     }, [ready, rivalReady]);
 
+    useEffect(() => {
+        if (done && myFinishAt === null) setMyFinishAt(Date.now());
+    }, [done, myFinishAt]);
+
+    useEffect(() => {
+        if (rivalDone && rivalFinishAt === null) setRivalFinishAt(Date.now());
+    }, [rivalDone, rivalFinishAt]);
+
+    useEffect(() => {
+        if ((done || rivalDone) && finishDeadline === null) {
+            setFinishDeadline(Date.now() + FINISH_WINDOW_MS);
+        }
+    }, [done, rivalDone, finishDeadline]);
+
+    useEffect(() => {
+        if (finishDeadline === null) return;
+
+        const tick = () => {
+            const left = Math.max(0, Math.ceil((finishDeadline - Date.now()) / 1000));
+            setRemaining(left);
+            if (left <= 0) leave();
+        };
+
+        tick();
+        const id = setInterval(tick, 250);
+        return () => clearInterval(id);
+    }, [finishDeadline, leave]);
+
     function type_(value: string) {
         if (!started || done) return;
         type(value);
@@ -89,11 +130,19 @@ export default function Race({ text, typed, rival, rivalName, ready, rivalReady,
 
     return (
         <div onClick={() => started && !done && input.current?.focus()} className="flex min-h-screen w-full flex-col items-center justify-center px-6 pt-24" style={{ backgroundColor: colors.bg }}>
-            <div className="mb-3 w-full max-w-3xl text-xs" style={{ color: colors.muted }}>
-                racing <span style={{ color: colors.rival }}>{rivalName || "opponent"}</span>
+            <div className="mb-3 flex w-full max-w-3xl items-center justify-between text-xs" style={{ color: colors.muted }}>
+                <span>racing <span style={{ color: colors.rival }}>{rivalName || "opponent"}</span></span>
+                {finishDeadline !== null && (
+                    <span style={{ color: iWon ? colors.accent : colors.rival }}>
+                        {iWon ? "you win" : `${rivalName || "opponent"} wins`} — {remaining ?? 15}s
+                    </span>
+                )}
+            </div>
+            <div className="mb-2 h-px w-full max-w-3xl" style={{ backgroundColor: colors.border }}>
+                <div className="h-px transition-[width] duration-150 ease-out" style={{ width: mine + "%", backgroundColor: colors.accent }} />
             </div>
             <div className="mb-8 h-px w-full max-w-3xl" style={{ backgroundColor: colors.border }}>
-                <div className="h-px transition-[width] duration-150 ease-out" style={{ width: mine + "%", backgroundColor: colors.accent }} />
+                <div className="h-px transition-[width] duration-150 ease-out" style={{ width: rivalPercent + "%", backgroundColor: colors.rival }} />
             </div>
             <div ref={card} className="relative min-h-[22rem] w-full max-w-3xl overflow-hidden rounded-2xl border p-8 sm:min-h-[24rem] sm:p-10" style={{ borderColor: colors.border, backgroundColor: colors.panel }}>
                 <Type text={text} typed={typed} rival={rival} />
@@ -151,13 +200,6 @@ export default function Race({ text, typed, rival, rivalName, ready, rivalReady,
                         <div key={count} className="text-7xl font-semibold" style={{ ...mono, color: colors.accent }}>
                             {count}
                         </div>
-                    </div>
-                )}
-
-                {done && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3" style={{ backgroundColor: colors.bg }}>
-                        <div className="text-sm" style={{ color: colors.muted }}>you finished — waiting for opponent</div>
-                        <Loader2 size={18} className="animate-spin" color={colors.muted} />
                     </div>
                 )}
             </div>
