@@ -31,22 +31,6 @@ I implemented this to stop people from memorizing quotes, and keeping races fair
 
 ![Race](public/screenshots/race.png)
 
-## Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/aryan-madan/Slate.git
-
-# Enter the project directory
-cd slate
-
-# Install dependencies
-npm install
-
-# Start the development server
-npm run dev
-```
-
 ### AI Usage
 - ui iterating and css
 - debugging & bug fixing
