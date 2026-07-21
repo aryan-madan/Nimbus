@@ -5,7 +5,7 @@ import Race from "./pages/Race";
 import Home from "./pages/Home";
 import Board from "./pages/Board";
 import Settings from "./pages/Settings";
-import { colors } from "./lib/theme";
+import { colors as staticColors, useTheme } from "./lib/theme";
 import { generate } from "./lib/words";
 import { iceServers } from "./lib/ice";
 import { saveRace, updateElo, load, getProfile, ensureProfile, signIn, signOutUser, watchUser, type Score } from "./lib/fire";
@@ -54,6 +54,8 @@ export default function App() {
     const [foundOpponent, setFoundOpponent] = useState<Opponent | null>(null);
     const [foundRanked, setFoundRanked] = useState(false);
     const [eloDelta, setEloDelta] = useState<number | null>(null);
+
+    const { colors } = useTheme();
 
     const room = useRef("");
     const host = useRef(false);
