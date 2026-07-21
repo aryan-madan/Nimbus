@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { Check, Loader2 } from "lucide-react";
 import Type from "../components/Type";
@@ -33,9 +33,8 @@ export default function Race({ text, typed, rival, rivalName, ready, rivalReady,
     const done = text.length > 0 && typed.length >= text.length;
     const rivalDone = text.length > 0 && rival >= text.length;
     const once = useRef(false);
-    const mine = useMemo(() => (text.length ? Math.min(100, (typed.length / text.length) * 100) : 0), [typed, text]);
-    const rivalPercent = useMemo(() => (text.length ? Math.min(100, (rival / text.length) * 100) : 0), [rival, text]);
-    const iWon = myFinishAt !== null && (rivalFinishAt === null || myFinishAt <= rivalFinishAt);
+    const finished = done || rivalDone;
+    const iWon = myFinishAt !== null && rivalFinishAt !== null && myFinishAt <= rivalFinishAt;
 
     useEffect(() => {
         if (card.current) gsap.fromTo(card.current, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" });
@@ -98,10 +97,10 @@ export default function Race({ text, typed, rival, rivalName, ready, rivalReady,
     }, [rivalDone, rivalFinishAt]);
 
     useEffect(() => {
-        if ((done || rivalDone) && finishDeadline === null) {
+        if (finished && finishDeadline === null) {
             setFinishDeadline(Date.now() + FINISH_WINDOW_MS);
         }
-    }, [done, rivalDone, finishDeadline]);
+    }, [finished, finishDeadline]);
 
     useEffect(() => {
         if (finishDeadline === null) return;
@@ -128,23 +127,39 @@ export default function Race({ text, typed, rival, rivalName, ready, rivalReady,
 
     const percent = (wait / 15) * 100;
 
+    let status = "";
+    if (finishDeadline !== null) {
+        if (done && !rivalDone) {
+            status = "waiting for opponent";
+        } else if (!done && rivalDone) {
+            status = "opponent finished";
+        } else if (done && rivalDone) {
+            status = iWon ? "you win" : `${rivalName || "opponent"} wins`;
+        }
+    }
+
     return (
-        <div onClick={() => started && !done && input.current?.focus()} className="flex min-h-screen w-full flex-col items-center justify-center px-6 pt-24" style={{ backgroundColor: colors.bg }}>
+        <div
+            onClick={() => started && !done && input.current?.focus()}
+            className="flex min-h-screen w-full -translate-y-8 flex-col items-center justify-center px-6 pt-24"
+            style={{ backgroundColor: colors.bg }}
+        >
             <div className="mb-3 flex w-full max-w-3xl items-center justify-between text-xs" style={{ color: colors.muted }}>
                 <span>racing <span style={{ color: colors.rival }}>{rivalName || "opponent"}</span></span>
                 {finishDeadline !== null && (
-                    <span style={{ color: iWon ? colors.accent : colors.rival }}>
-                        {iWon ? "you win" : `${rivalName || "opponent"} wins`} — {remaining ?? 15}s
+                    <span style={{ color: done && !rivalDone ? colors.muted : iWon ? colors.accent : colors.rival }}>
+                        {status} — {remaining ?? 15}s
                     </span>
                 )}
             </div>
-            <div className="mb-2 h-px w-full max-w-3xl" style={{ backgroundColor: colors.border }}>
-                <div className="h-px transition-[width] duration-150 ease-out" style={{ width: mine + "%", backgroundColor: colors.accent }} />
-            </div>
-            <div className="mb-8 h-px w-full max-w-3xl" style={{ backgroundColor: colors.border }}>
-                <div className="h-px transition-[width] duration-150 ease-out" style={{ width: rivalPercent + "%", backgroundColor: colors.rival }} />
-            </div>
-            <div ref={card} className="relative min-h-[22rem] w-full max-w-3xl overflow-hidden rounded-2xl border p-8 sm:min-h-[24rem] sm:p-10" style={{ borderColor: colors.border, backgroundColor: colors.panel }}>
+            <div
+                ref={card}
+                className={
+                    "relative w-full max-w-3xl overflow-hidden rounded-2xl border p-8 transition-[min-height] duration-300 sm:p-10 " +
+                    (count === null ? "min-h-[22rem] sm:min-h-[24rem]" : "min-h-[12rem]")
+                }
+                style={{ borderColor: colors.border, backgroundColor: colors.panel }}
+            >
                 <Type text={text} typed={typed} rival={rival} />
 
                 {count === null && (
