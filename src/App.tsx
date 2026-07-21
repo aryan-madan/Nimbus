@@ -78,12 +78,12 @@ export default function App() {
     const rankedOpponent = useRef<Opponent | null>(null);
     const eloBefore = useRef(1200);
     const guest = useRef("");
+    const lastQueueMode = useRef<"ranked" | "casual" | null>(null);
 
     const joining = new URLSearchParams(location.search).get("room");
 
     useEffect(() => {
         refresh();
-        if (joining) room.current = joining;
         guest.current = crypto.randomUUID();
         const unsub = watchUser(async next => {
             setUser(next);
@@ -106,6 +106,16 @@ export default function App() {
             }
         }
         window.addEventListener("beforeunload", handleUnload);
+
+        if (joining) {
+            lastQueueMode.current = null;
+            room.current = joining;
+            host.current = false;
+            setLink(location.href);
+            setScreen("wait");
+            connect();
+        }
+
         return () => {
             unsub();
             window.removeEventListener("beforeunload", handleUnload);
@@ -127,6 +137,7 @@ export default function App() {
     }
 
     function create() {
+        lastQueueMode.current = null;
         room.current = code();
         host.current = true;
         history.replaceState(null, "", "?room=" + room.current);
@@ -136,12 +147,14 @@ export default function App() {
     }
 
     function join() {
+        lastQueueMode.current = null;
         host.current = false;
         setScreen("wait");
         connect();
     }
 
     function joinCode(value: string) {
+        lastQueueMode.current = null;
         room.current = value;
         host.current = false;
         history.replaceState(null, "", "?room=" + value);
@@ -159,6 +172,7 @@ export default function App() {
 
     function startQueue(mode: "ranked" | "casual") {
         const uid = user?.uid || guest.current;
+        lastQueueMode.current = mode;
         setQueueMode(mode);
         setEloDelta(null);
         setScreen("queue");
@@ -186,6 +200,7 @@ export default function App() {
     }
 
     function cancelQueue() {
+        lastQueueMode.current = null;
         queueSock.current?.close();
         queueSock.current = null;
         setQueueMode(null);
@@ -403,7 +418,7 @@ export default function App() {
         }
     }
 
-    function leaveRace() {
+    function teardown() {
         if (chan.current?.readyState === "open" && racing.current && !raceOver.current) {
             try { chan.current.send(JSON.stringify({ type: "leave" })); } catch { }
         }
@@ -419,6 +434,11 @@ export default function App() {
         rankedOpponent.current = null;
         setReady(false);
         setRivalReady(false);
+    }
+
+    function leaveRace() {
+        teardown();
+        lastQueueMode.current = null;
         setEloDelta(null);
         setScreen("home");
     }
@@ -440,7 +460,16 @@ export default function App() {
     }
 
     function again() {
-        location.href = location.origin + location.pathname;
+        teardown();
+        history.replaceState(null, "", location.pathname);
+
+        if (lastQueueMode.current) {
+            const mode = lastQueueMode.current;
+            startQueue(mode);
+        } else {
+            setEloDelta(null);
+            setScreen("home");
+        }
     }
 
     function openBoard() {
