@@ -31,6 +31,11 @@ I implemented this to stop people from memorizing quotes, and keeping races fair
 
 ![Race](public/screenshots/race.png)
 
+## Settings
+See your stats, change your *Display Name* and select from various curated themes to personalize **Nimbus**.
+
+![Settings](public/screenshots/settings.png)
+
 ### AI Usage
 - ui iterating and css
 - debugging & bug fixing
