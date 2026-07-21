@@ -82,6 +82,19 @@ export default function Home({
 
     const resultRanked = eloDelta !== null;
 
+    const isWin = verdict.startsWith("you win") || verdict.startsWith("opponent disconnected");
+    const isTie = verdict.startsWith("tie");
+    const rivalName = verdict.match(/^rival wins.*$/) ? "" : "";
+    void rivalName;
+
+    const myWpm = verdict.match(/(\d+)wpm/)?.[1] ?? "—";
+    const myAcc = verdict.match(/\/(\d+)%/)?.[1] ?? "—";
+    const theirWpm = verdict.match(/vs (\d+)wpm/)?.[1] ?? "—";
+    const theirAcc = verdict.match(/vs \d+wpm\/(\d+)%/)?.[1] ?? "—";
+
+    const verdictLabel = isTie ? "tie" : isWin ? "you win" : "you lose";
+    const verdictColor = isTie ? colors.muted : isWin ? colors.accent : colors.rival;
+
     return (
         <div className="flex min-h-screen w-full flex-col">
             <main className="flex flex-1 flex-col items-center justify-center px-6 pb-16 pt-32">
@@ -248,34 +261,108 @@ export default function Home({
                 )}
 
                 {stage === "result" && (
-                    <div className="flex w-full max-w-md flex-col items-center gap-6">
-                        <h1 ref={verdictRef} className="text-center text-xl font-medium" style={{ ...mono, color: colors.text }}>
-                            {verdict}
-                        </h1>
-                        {eloDelta !== null && (
-                            <div
-                                className="rounded-full px-4 py-1.5 text-sm font-semibold"
-                                style={{ ...mono, color: eloDelta >= 0 ? colors.accent : colors.error, backgroundColor: (eloDelta >= 0 ? colors.accent : colors.error) + "1A" }}
+                    <div className="flex w-full max-w-sm flex-col items-center">
+                        <div className="flex flex-col items-center gap-3 text-center">
+                            <span
+                                className="text-[10px] font-medium uppercase tracking-[0.2em]"
+                                style={{ color: verdictColor, opacity: 0.85 }}
                             >
-                                {eloDelta >= 0 ? "+" : ""}{eloDelta} elo
+                                {isTie ? "draw" : isWin ? "victory" : "defeat"}
+                            </span>
+
+                            <h1
+                                ref={verdictRef}
+                                className="text-3xl font-semibold tracking-tight"
+                                style={{ color: colors.text }}
+                            >
+                                {verdictLabel}
+                            </h1>
+
+                            <div className="flex items-center gap-2.5 text-sm" style={{ ...mono, color: colors.muted }}>
+                                <span style={{ color: colors.text }}>{myWpm} wpm</span>
+                                <span style={{ color: colors.faint }}>·</span>
+                                <span>{myAcc}% accuracy</span>
                             </div>
-                        )}
-                        <div className={enterClass + " flex w-full flex-col gap-3"} style={delay(0)}>
+
+                            {eloDelta !== null && (
+                                <span
+                                    className="mt-0.5 text-sm font-semibold"
+                                    style={{ ...mono, color: eloDelta >= 0 ? colors.accent : colors.error }}
+                                >
+                                    {eloDelta >= 0 ? "+" : ""}{eloDelta} elo
+                                </span>
+                            )}
+                        </div>
+
+                        <div
+                            className="my-8 h-px w-full"
+                            style={{ backgroundColor: colors.border }}
+                        />
+
+                        <div className="grid w-full grid-cols-2 overflow-hidden rounded-2xl border" style={{ borderColor: colors.border }}>
+                            <div className="flex flex-col items-center gap-1.5 border-r px-4 py-4" style={{ borderColor: colors.border, backgroundColor: colors.panel }}>
+                                <span
+                                    className="text-[10px] font-medium uppercase tracking-widest"
+                                    style={{ color: colors.accent }}
+                                >
+                                    you
+                                </span>
+                                <span
+                                    className="text-2xl font-semibold"
+                                    style={{ ...mono, color: colors.text }}
+                                >
+                                    {myWpm}
+                                </span>
+                                <span
+                                    className="text-[11px]"
+                                    style={{ ...mono, color: colors.muted }}
+                                >
+                                    {myAcc}% acc
+                                </span>
+                            </div>
+
+                            <div className="flex flex-col items-center gap-1.5 px-4 py-4" style={{ backgroundColor: colors.panel }}>
+                                <span
+                                    className="max-w-[8rem] truncate text-[10px] font-medium uppercase tracking-widest"
+                                    style={{ color: colors.rival }}
+                                >
+                                    opponent
+                                </span>
+                                <span
+                                    className="text-2xl font-semibold"
+                                    style={{ ...mono, color: colors.text }}
+                                >
+                                    {theirWpm}
+                                </span>
+                                <span
+                                    className="text-[11px]"
+                                    style={{ ...mono, color: colors.muted }}
+                                >
+                                    {theirAcc}% acc
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="mt-8 flex w-full flex-col gap-3">
                             {!resultRanked && (
                                 <button
                                     onClick={rematch}
                                     className="w-full rounded-2xl py-3.5 text-sm font-medium transition-all duration-150 hover:opacity-90 active:scale-[0.98]"
-                                    style={{ backgroundColor: colors.accent, color: colors.bg }}
+                                    style={{
+                                        backgroundColor: colors.accent,
+                                        color: colors.bg
+                                    }}
                                 >
                                     rematch
                                 </button>
                             )}
+
                             <button
                                 onClick={again}
-                                className="w-full rounded-2xl border py-3.5 text-sm font-medium transition-colors duration-150"
-                                style={{ borderColor: colors.border, color: colors.text }}
-                                onMouseEnter={event => (event.currentTarget.style.borderColor = colors.muted)}
-                                onMouseLeave={event => (event.currentTarget.style.borderColor = colors.border)}
+                                className="w-full py-2 text-xs font-medium transition-colors duration-150"
+                                style={{ color: colors.muted }}
+                                onMouseEnter={event => (event.currentTarget.style.color = colors.text)}
+                                onMouseLeave={event => (event.currentTarget.style.color = colors.muted)}
                             >
                                 new opponent
                             </button>
