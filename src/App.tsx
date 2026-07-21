@@ -107,15 +107,6 @@ export default function App() {
         }
         window.addEventListener("beforeunload", handleUnload);
 
-        if (joining) {
-            lastQueueMode.current = null;
-            room.current = joining;
-            host.current = false;
-            setLink(location.href);
-            setScreen("wait");
-            connect();
-        }
-
         return () => {
             unsub();
             window.removeEventListener("beforeunload", handleUnload);

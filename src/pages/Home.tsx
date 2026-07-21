@@ -49,12 +49,16 @@ interface Props {
 }
 
 export default function Home({
-    stage, name, setName, locked, create, joinCode, link, copied, share,
+    stage, name, setName, locked, joining, create, joinCode, link, copied, share,
     board, verdict, verdictRef, again, rematch, signedIn, elo, queueMode, queueRanked, queueCasual, cancelQueue,
     foundOpponent, foundRanked, eloDelta
 }: Props) {
-    const [code, setCode] = useState("");
+    const [code, setCode] = useState(joining ? joining.toUpperCase() : "");
     const codeInput = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (joining) codeInput.current?.focus();
+    }, [joining]);
 
     const stats = useMemo(() => {
         if (!board.length) return null;
@@ -64,8 +68,12 @@ export default function Home({
         return { fastest: fastest.wpm + "wpm", acc: acc.accuracy + "%", races: String(total) };
     }, [board]);
 
+    function updateCode(value: string) {
+        setCode(extract(value));
+    }
+
     function submit() {
-        if (code.trim()) joinCode(extract(code));
+        if (code.trim()) joinCode(code.trim());
     }
 
     const [show, setShow] = useState(false);
@@ -173,7 +181,7 @@ export default function Home({
                             <input
                                 ref={codeInput}
                                 value={code}
-                                onChange={event => setCode(event.target.value)}
+                                onChange={event => updateCode(event.target.value)}
                                 onKeyDown={event => event.key === "Enter" && submit()}
                                 placeholder="paste link or code"
                                 className="flex-1 border-b bg-transparent py-2.5 text-xs outline-none transition-colors duration-150"
@@ -183,12 +191,13 @@ export default function Home({
                             />
                             <button
                                 onClick={submit}
-                                className="text-xs font-medium transition-colors duration-150"
-                                style={{ color: colors.muted }}
-                                onMouseEnter={event => (event.currentTarget.style.color = colors.text)}
-                                onMouseLeave={event => (event.currentTarget.style.color = colors.muted)}
+                                disabled={!code.trim()}
+                                className="text-xs font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-30"
+                                style={{ color: colors.accent }}
+                                onMouseEnter={event => code.trim() && (event.currentTarget.style.color = colors.text)}
+                                onMouseLeave={event => (event.currentTarget.style.color = colors.accent)}
                             >
-                                go
+                                join
                             </button>
                         </div>
 
