@@ -5,9 +5,9 @@ import Race from "./pages/Race";
 import Home from "./pages/Home";
 import Board from "./pages/Board";
 import Settings from "./pages/Settings";
+import { useTheme } from "./lib/theme";
 import { generate } from "./lib/words";
 import { iceServers } from "./lib/ice";
-import { colors as useTheme } from "./lib/theme";
 import { saveRace, updateElo, load, getProfile, ensureProfile, signIn, signOutUser, watchUser, type Score } from "./lib/fire";
 
 type Screen = "home" | "wait" | "queue" | "found" | "race" | "result" | "board" | "settings";

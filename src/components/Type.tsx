@@ -31,16 +31,19 @@ export default function Type({ text, typed, rival }: Props) {
     }, [typed, rival, text]);
 
     return (
-        <div className="relative max-w-3xl select-none whitespace-pre-wrap break-words text-xl leading-relaxed sm:text-2xl" style={mono}>
+<div className="relative max-w-3xl select-none whitespace-pre-wrap break-words text-xl leading-[2] tracking-wide sm:text-2xl" style={mono}>
             {text.split("").map((char, i) => {
                 const past = i < typed.length;
+                const current = i === typed.length;
                 const right = past && typed[i] === char;
                 const wrong = past && typed[i] !== char;
-                const style = right
-                    ? { color: colors.text }
-                    : wrong
-                        ? { backgroundColor: colors.error + "26", color: colors.error }
-                        : { color: "#55514A" };
+                const style: React.CSSProperties = wrong
+                    ? { backgroundColor: colors.error + "26", color: colors.error, borderRadius: 3 }
+                    : right
+                        ? { color: colors.text }
+                        : current
+                            ? { color: colors.faint, backgroundColor: colors.accent + "14", borderRadius: 3 }
+                            : { color: colors.faint };
                 return (
                     <span key={i} ref={el => { refs.current[i] = el; }} style={style}>
                         {char}
